@@ -1,0 +1,6 @@
+@DataTechnologies_Team5_HostAddress = http://localhost:5070
+
+GET {{DataTechnologies_Team5_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
