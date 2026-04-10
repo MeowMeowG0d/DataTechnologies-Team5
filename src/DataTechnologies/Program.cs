@@ -3,6 +3,7 @@ using DataTechnologies.Data;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
+using System.Data.Common;
 
 AppMenuView.RenderHeader();
 
@@ -50,7 +51,8 @@ while (!shouldExit)
 					var dbConnection = new DBConnection(demoDatabaseName);
 					var repo = new ProductRepository(dbConnection.GetConnection().ConnectionString);
 					var service = new ProductBrowseService(repo);
-					var productOverviewScreen = new ProductOverviewScreen(service);
+					var shoppingCartService = new ShoppingCartService(dbConnection);
+					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService);
 					productOverviewScreen.ShowAvailableProducts();
 				}
 				else if (demoOption == MenuOptions.ShowOrderOverview)
@@ -146,6 +148,7 @@ while (!shouldExit)
 				AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
 			}
 			break;
+
 		default:
 			shouldExit = true;
 			AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");

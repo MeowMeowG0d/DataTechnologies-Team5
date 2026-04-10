@@ -14,6 +14,7 @@ namespace DataTechnologies.UI
         public const string ShowAvailableProducts = "Show available products";
             public const string ShowOrderOverview = "Orderoverzicht";
         public const string InitializeNow = "Initialize now";
+        public const string InsertItemToCart = "Add item to cart";
         public const string Back = "Back";
 
         public static IReadOnlyList<string> GetMainMenuOptions()
