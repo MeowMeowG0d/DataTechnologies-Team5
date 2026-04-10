@@ -13,27 +13,28 @@ namespace DataTechnologies.Repositories
             _connectionString = connectionString;
         }
 
-        public OrderOverview GetPendingOrderForUser(int userId)
+        public (Orders order, List<OrderItems> items, string address) GetPendingOrderForUser(int userId)
         {
-            // TODO: Implement actual DB logic
-            // Return dummy data for now
-            return new OrderOverview
+            var order = new Orders
             {
-                OrderId = 1,
-                Items = new List<OrderItemOverview>
-                {
-                    new OrderItemOverview { ProductName = "Gaming Mouse X1", Quantity = 2, Price = 49.99m },
-                    new OrderItemOverview { ProductName = "27-inch Monitor Pro", Quantity = 1, Price = 229.00m }
-                },
-                Address = "Kerkstraat 10A, 1012AB Amsterdam",
+                OrderID = 1,
+                OrderNumber = "ORD-2026-001",
+                UserID = userId,
                 PaymentMethod = "iDEAL",
-                TotalPrice = 328.98m
+                OrderStatus = "In Winkelwagen",
+                TotalAmount = 328.98f
             };
+            var items = new List<OrderItems>
+            {
+                new OrderItems { OrderItemID = 1, OrderID = 1, ProductID = 1, Quantity = 2, PriceAtPurchase = 49.99f },
+                new OrderItems { OrderItemID = 2, OrderID = 1, ProductID = 2, Quantity = 1, PriceAtPurchase = 229.00f }
+            };
+            var address = "Kerkstraat 10A, 1012AB Amsterdam";
+            return (order, items, address);
         }
 
         public bool PlaceOrder(int orderId)
         {
-            // TODO: Implement DB logic to finalize order
             return true;
         }
     }
