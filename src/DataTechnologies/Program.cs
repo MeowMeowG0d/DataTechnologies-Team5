@@ -53,6 +53,15 @@ while (!shouldExit)
 					var productOverviewScreen = new ProductOverviewScreen(service);
 					productOverviewScreen.ShowAvailableProducts();
 				}
+				else if (demoOption == MenuOptions.ShowOrderOverview)
+				{
+					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+					var dbConnection = new DBConnection(demoDatabaseName);
+					var orderRepo = new DataTechnologies.Repositories.OrderRepository(dbConnection.GetConnection().ConnectionString);
+					// For demo, use userId = 1
+					var orderOverviewScreen = new DataTechnologies.UI.OrderOverviewScreen(orderRepo, 1);
+					orderOverviewScreen.ShowOrderOverview();
+				}
 			}
 			catch (Exception ex)
 			{

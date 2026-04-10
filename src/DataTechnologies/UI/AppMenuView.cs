@@ -12,6 +12,7 @@ namespace DataTechnologies.UI
         public const string Exit = "Exit";
 
         public const string ShowAvailableProducts = "Show available products";
+            public const string ShowOrderOverview = "Orderoverzicht";
         public const string InitializeNow = "Initialize now";
         public const string Back = "Back";
 
@@ -30,11 +31,12 @@ namespace DataTechnologies.UI
 
         public static IReadOnlyList<string> GetDemoMenuOptions()
         {
-            return new[]
-            {
-                ShowAvailableProducts,
-                Back
-            };
+                return new[]
+                {
+                    ShowAvailableProducts,
+                    ShowOrderOverview,
+                    Back
+                };
         }
 
         public static IReadOnlyList<string> GetInitializeMenuOptions()
