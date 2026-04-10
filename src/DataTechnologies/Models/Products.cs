@@ -1,14 +1,10 @@
-public class Products
+public class Product
 {
-    public string Name { get; set; }
-    public string Brand { get;  set; }
-
-    public string Description {get; set; }
-
-    public float Price { get; set;}
-
+    public int ProductId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Brand { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public decimal Price { get; set; }
     public int Stock { get; set; }
-
-    public string Images {get;  set; }
-    public string Specification { get; set; }
-    }
+    public string? Specification { get; set; }
+}
