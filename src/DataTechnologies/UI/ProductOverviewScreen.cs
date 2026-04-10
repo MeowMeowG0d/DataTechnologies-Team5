@@ -6,6 +6,7 @@ namespace DataTechnologies.UI
     public class ProductOverviewScreen
     {
         private const string BackToMenu = "Terug";
+        private const string ViewCart = "Bekijk winkelwagen";
         private readonly ProductBrowseService _productBrowseService;
         private readonly ShoppingCartService _shoppingCartService;
         private const int TEMPUSERID = 1;
@@ -46,11 +47,23 @@ namespace DataTechnologies.UI
 
             AnsiConsole.Write(table);
 
-            var selectedProduct = PromptProductSelection(products);
-            if (selectedProduct is null)
+            var selectedOption = PromptProductSelection(products);
+            if (selectedOption == BackToMenu)
             {
                 return;
             }
+            if (selectedOption == ViewCart)
+            {
+                // TODO: Code to view shopping cart goes here
+                AnsiConsole.MarkupLine("[yellow]Winkelwagen functionaliteit komt binnenkort![/]");
+                AnsiConsole.WriteLine("Druk op een knop om door te gaan...");
+                Console.ReadKey(true);
+                AnsiConsole.Clear();
+                ShowAvailableProducts();
+                return;
+            }
+
+            var selectedProduct = products.First(p => selectedOption.StartsWith($"#{p.ProductID} "));
 
             while (true)
             {
@@ -82,25 +95,21 @@ namespace DataTechnologies.UI
             }
         }
 
-        private Product? PromptProductSelection(IReadOnlyList<Product> products)
+        private string PromptProductSelection(IReadOnlyList<Product> products)
         {
             var choices = products
                 .Select(p => $"#{p.ProductID} - {p.Name}")
+                .Append(ViewCart)
                 .Append(BackToMenu)
                 .ToList();
 
             var selectedOption = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
-                    .Title("Kies een product om details te bekijken")
+                    .Title("Kies een product om details te bekijken of bekijk uw winkelwagen")
                     .PageSize(10)
                     .AddChoices(choices));
 
-            if (selectedOption == BackToMenu)
-            {
-                return null;
-            }
-
-            return products.First(p => selectedOption.StartsWith($"#{p.ProductID} "));
+            return selectedOption;
         }
 
         private static void ShowProductDetails(Product product)
