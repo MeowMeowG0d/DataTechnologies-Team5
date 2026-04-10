@@ -80,4 +80,9 @@ public class UserService(UserRepository userRepository, IPasswordHasher password
         return userRepository.GetByEmail(email);
     }
 
+    public List<User> GetAllUsers()
+    {
+        return userRepository.GetAll();
+    }
+
 }

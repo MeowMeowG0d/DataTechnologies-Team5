@@ -1,5 +1,6 @@
 ﻿using Spectre.Console;
 using DataTechnologies.Data;
+using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
@@ -53,6 +54,15 @@ while (!shouldExit)
 					var productOverviewScreen = new ProductOverviewScreen(service);
 					productOverviewScreen.ShowAvailableProducts();
 				}
+				else if (demoOption == MenuOptions.User)
+                {
+                    var dbConnection = new DBConnection();
+                    var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+                    var userService = new UserService(userRepo, new PasswordHasher());
+
+                    UserMenu.ShowUserDemo(userService);
+                }
+
 			}
 			catch (Exception ex)
 			{

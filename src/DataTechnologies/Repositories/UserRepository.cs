@@ -56,7 +56,18 @@ public class UserRepository(string connectionString)
         using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@UserId", userId);
 
-        return cmd.ExecuteNonQuery() > 0;
+        var deleted = cmd.ExecuteNonQuery() > 0;
+        if (deleted)
+        {
+            using var resetCmd = new NpgsqlCommand(
+                "SELECT setval('users_userid_seq', COALESCE((SELECT MAX(UserId) FROM Users), 0));",
+                conn);
+            resetCmd.ExecuteNonQuery();
+        }
+
+        return deleted;
+
+
     }
 
     public User? GetById(int userId)
@@ -89,6 +100,22 @@ public class UserRepository(string connectionString)
             return Map(reader);
 
         return null;
+    }
+
+    public List<User> GetAll()
+    {
+        const string sql = "SELECT * FROM Users;";
+
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+
+        using var reader = cmd.ExecuteReader();
+        var users = new List<User>();
+        while (reader.Read())
+            users.Add(Map(reader));
+
+        return users;
     }
 
     private static User Map(NpgsqlDataReader reader) => new()
