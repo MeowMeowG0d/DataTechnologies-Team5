@@ -51,7 +51,8 @@ while (!shouldExit)
 					var dbConnection = new DBConnection(demoDatabaseName);
 					var repo = new ProductRepository(dbConnection.GetConnection().ConnectionString);
 					var service = new ProductBrowseService(repo);
-					var productOverviewScreen = new ProductOverviewScreen(service);
+					var shoppingCartService = new ShoppingCartService(dbConnection);
+					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService);
 					productOverviewScreen.ShowAvailableProducts();
 				}
 			}
@@ -140,8 +141,8 @@ while (!shouldExit)
 			break;
 
 		case MenuOptions.InsertItemToCart:
-			ShoppingCartService shoppingCartService = new ShoppingCartService(new DBConnection("lukas"));
-			shoppingCartService.AddItemToCart(1, 1);
+			// ShoppingCartService shoppingCartService = new ShoppingCartService(new DBConnection("lukas"));
+			// shoppingCartService.AddItemToCart(1, 1);
 			break;
 		default:
 			shouldExit = true;

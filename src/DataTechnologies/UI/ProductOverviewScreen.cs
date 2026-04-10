@@ -7,10 +7,13 @@ namespace DataTechnologies.UI
     {
         private const string BackToMenu = "Terug";
         private readonly ProductBrowseService _productBrowseService;
+        private readonly ShoppingCartService _shoppingCartService;
+        private const int TEMPUSERID = 1;
 
-        public ProductOverviewScreen(ProductBrowseService productBrowseService)
+        public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService)
         {
             _productBrowseService = productBrowseService;
+            _shoppingCartService = shoppingCartService;
         }
 
         public void ShowAvailableProducts()
@@ -49,8 +52,34 @@ namespace DataTechnologies.UI
                 return;
             }
 
-            AnsiConsole.WriteLine();
-            ShowProductDetails(selectedProduct);
+            while (true)
+            {
+                AnsiConsole.Clear();
+                ShowProductDetails(selectedProduct);
+
+                var action = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Wat wil je doen?")
+                        .AddChoices(new[]
+                        {
+                            "Voeg toe aan winkelwagen",
+                            "Terug"
+                        }));
+
+                if (action == "Voeg toe aan winkelwagen")
+                {
+                    _shoppingCartService.AddItemToCart(selectedProduct.ProductID, TEMPUSERID);
+                    AnsiConsole.MarkupLine($"[green]✓ {selectedProduct.Name} succesvol toegevoegd aan de winkelwagen![/]");
+                    AnsiConsole.WriteLine("Druk op een knop om door te gaan...");
+                    Console.ReadKey(true);
+                }
+                else if (action == "Terug")
+                {
+                    AnsiConsole.Clear();
+                    ShowAvailableProducts();
+                    return;
+                }
+            }
         }
 
         private Product? PromptProductSelection(IReadOnlyList<Product> products)
