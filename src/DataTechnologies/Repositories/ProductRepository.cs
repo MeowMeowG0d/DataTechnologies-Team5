@@ -14,9 +14,9 @@ namespace DataTechnologies.Repositories
         public int Add(Product product)
         {
             const string sql = @"
-                INSERT INTO products (name, brand, description, price, stock, specification)
+                INSERT INTO Product (Name, Brand, Description, Price, Stock, Specification)
                 VALUES (@Name, @Brand, @Description, @Price, @Stock, @Specification)
-                RETURNING product_id;";
+                RETURNING ProductID;";
 
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
@@ -34,7 +34,7 @@ namespace DataTechnologies.Repositories
 
         public Product? GetById(int productId)
         {
-            const string sql = "SELECT * FROM products WHERE product_id = @Id;";
+            const string sql = "SELECT * FROM Product WHERE ProductID = @Id;";
 
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
@@ -47,7 +47,7 @@ namespace DataTechnologies.Repositories
 
         public List<Product> GetAll()
         {
-            const string sql = "SELECT * FROM products;";
+            const string sql = "SELECT * FROM Product;";
             var products = new List<Product>();
 
             using var conn = new NpgsqlConnection(_connectionString);
@@ -64,14 +64,14 @@ namespace DataTechnologies.Repositories
         public bool Update(Product product)
         {
             const string sql = @"
-                UPDATE products
-                SET name          = @Name,
-                    brand         = @Brand,
-                    description   = @Description,
-                    price         = @Price,
-                    stock         = @Stock,
-                    specification = @Specification
-                WHERE product_id  = @Id;";
+                UPDATE Product
+                SET Name          = @Name,
+                    Brand         = @Brand,
+                    Description   = @Description,
+                    Price         = @Price,
+                    Stock         = @Stock,
+                    Specification = @Specification
+                WHERE ProductID   = @Id;";
 
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
@@ -90,7 +90,7 @@ namespace DataTechnologies.Repositories
 
         public bool Delete(int productId)
         {
-            const string sql = "DELETE FROM products WHERE product_id = @Id;";
+            const string sql = "DELETE FROM Product WHERE ProductID = @Id;";
 
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
@@ -102,13 +102,25 @@ namespace DataTechnologies.Repositories
 
         private static Product MapProduct(NpgsqlDataReader r) => new()
         {
-            ProductID     = r.GetInt32(r.GetOrdinal("product_id")),
-            Name          = r.GetString(r.GetOrdinal("name")),
-            Brand         = r.GetString(r.GetOrdinal("brand")),
-            Description   = r.GetString(r.GetOrdinal("description")),
-            Price         = r.GetFloat(r.GetOrdinal("price")),
-            Stock         = r.GetInt32(r.GetOrdinal("stock")),
-            Specification = r.GetString(r.GetOrdinal("specification")),
+            ProductID = r.GetInt32(r.GetOrdinal("productid")),
+            Name = ReadString(r, "name"),
+            Brand = ReadNullableString(r, "brand"),
+            Description = ReadNullableString(r, "description"),
+            Price = r.GetFloat(r.GetOrdinal("price")),
+            Stock = r.GetInt32(r.GetOrdinal("stock")),
+            Specification = ReadNullableString(r, "specification"),
         };
+
+        private static string ReadString(NpgsqlDataReader reader, string columnName)
+        {
+            var ordinal = reader.GetOrdinal(columnName);
+            return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal);
+        }
+
+        private static string ReadNullableString(NpgsqlDataReader reader, string columnName)
+        {
+            var ordinal = reader.GetOrdinal(columnName);
+            return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal);
+        }
     }
 }

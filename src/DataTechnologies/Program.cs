@@ -4,18 +4,7 @@ using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
 
-void RenderHeader()
-{
-	AnsiConsole.Write(
-		new FigletText("Team 5 CLI")
-			.LeftJustified()
-			.Color(Color.Green));
-
-	AnsiConsole.MarkupLine("[grey]DataTechnologies command-line app[/]");
-	AnsiConsole.WriteLine();
-}
-
-RenderHeader();
+AppMenuView.RenderHeader();
 
 if (!AnsiConsole.Profile.Capabilities.Interactive)
 {
@@ -39,43 +28,26 @@ var shouldExit = false;
 while (!shouldExit)
 {
 	AnsiConsole.Clear();
-	RenderHeader();
+	AppMenuView.RenderHeader();
 
-	var option = AnsiConsole.Prompt(
-		new SelectionPrompt<string>()
-			.Title("Choose an action")
-			.AddChoices(new[]
-			{
-				"Run demo",
-				"Show status",
-				"Test Database Connection",
-				"Initialize Database Tables",
-				"Insert Test Data",
-				"Exit"
-			}));
+	var option = AppMenuView.ShowMainMenu();
 
 	AnsiConsole.Clear();
-	RenderHeader();
+	AppMenuView.RenderHeader();
 
 	switch (option)
 	{
-		case "Run demo":
+		case MenuOptions.RunDemo:
 			try
 			{
 				AnsiConsole.MarkupLine("[green]Demo gestart.[/]");
 
-				var demoOption = AnsiConsole.Prompt(
-					new SelectionPrompt<string>()
-						.Title("Demo options")
-						.AddChoices(new[]
-						{
-							"Show available products",
-							"Back"
-						}));
+				var demoOption = AppMenuView.ShowDemoMenu();
 
-				if (demoOption == "Show available products")
+				if (demoOption == MenuOptions.ShowAvailableProducts)
 				{
-					var dbConnection = new DBConnection();
+					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+					var dbConnection = new DBConnection(demoDatabaseName);
 					var repo = new ProductRepository(dbConnection.GetConnection().ConnectionString);
 					var service = new ProductBrowseService(repo);
 					var productOverviewScreen = new ProductOverviewScreen(service);
@@ -87,7 +59,7 @@ while (!shouldExit)
 				AnsiConsole.MarkupLine($"[red]Could not load products in demo: {ex.Message}[/]");
 			}
 			break;
-		case "Show status":
+		case MenuOptions.ShowStatus:
 			var table = new Table()
 				.RoundedBorder()
 				.AddColumn("Check")
@@ -99,7 +71,7 @@ while (!shouldExit)
 
 			AnsiConsole.Write(table);
 			break;
-		case "Test Database Connection":
+		case MenuOptions.TestDatabaseConnection:
 			try
 			{
 				var dbConnection = new DBConnection();
@@ -114,19 +86,12 @@ while (!shouldExit)
 				AnsiConsole.MarkupLine($"[red]Database connection failed: {ex.Message}[/]");
 			}
 			break;
-		case "Initialize Database Tables":
+		case MenuOptions.InitializeDatabaseTables:
 			try
 			{
-				var initOption = AnsiConsole.Prompt(
-					new SelectionPrompt<string>()
-						.Title("Initialize options")
-						.AddChoices(new[]
-						{
-							"Initialize now",
-							"Back"
-						}));
+				var initOption = AppMenuView.ShowInitializeMenu();
 
-				if (initOption == "Initialize now")
+				if (initOption == MenuOptions.InitializeNow)
 				{
 					var dbName = AnsiConsole.Ask<string>("Enter database name:");
 
@@ -150,7 +115,7 @@ while (!shouldExit)
 				AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
 			}
 			break;
-		case "Insert Test Data":
+		case MenuOptions.InsertTestData:
 			try
 			{
 				var dbName = AnsiConsole.Ask<string>("Enter database name (where tables exist):");
