@@ -27,7 +27,7 @@ namespace DataTechnologies.Repositories
                 (2, 2)
                 ON CONFLICT (CartID) DO NOTHING;
 
-                INSERT INTO CarItems (CartItemID, CartID, ProductID, Quantity) VALUES 
+                INSERT INTO CartItems (CartItemID, CartID, ProductID, Quantity) VALUES 
                 (1, 1, 1, 1),
                 (2, 2, 2, 2)
                 ON CONFLICT (CartItemID) DO NOTHING;

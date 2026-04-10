@@ -42,7 +42,7 @@ namespace DataTechnologies.Repositories
                 );
 
                 -- 5. CarItems (CartItems) table
-                CREATE TABLE IF NOT EXISTS CarItems (
+                CREATE TABLE IF NOT EXISTS CartItems (
                     CartItemID SERIAL PRIMARY KEY,
                     CartID INT NOT NULL,
                     ProductID INT NOT NULL,
@@ -128,6 +128,28 @@ namespace DataTechnologies.Repositories
                 );
             ";
 
+            var seedProductsSql = @"
+                INSERT INTO Product (Name, Brand, Description, Price, Stock, Specification)
+                SELECT 'Gaming Mouse X1', 'LogiCore', 'Ergonomic gaming mouse with RGB.', 49.99, 25, 'DPI up to 16000'
+                WHERE NOT EXISTS (SELECT 1 FROM Product WHERE Name = 'Gaming Mouse X1');
+
+                INSERT INTO Product (Name, Brand, Description, Price, Stock, Specification)
+                SELECT 'Mechanical Keyboard K80', 'KeyForge', 'Mechanical keyboard with blue switches.', 89.95, 18, 'ANSI layout, wired USB'
+                WHERE NOT EXISTS (SELECT 1 FROM Product WHERE Name = 'Mechanical Keyboard K80');
+
+                INSERT INTO Product (Name, Brand, Description, Price, Stock, Specification)
+                SELECT '27-inch Monitor Pro', 'ViewLine', 'QHD monitor for work and gaming.', 229.00, 12, '2560x1440, 144Hz'
+                WHERE NOT EXISTS (SELECT 1 FROM Product WHERE Name = '27-inch Monitor Pro');
+
+                INSERT INTO Product (Name, Brand, Description, Price, Stock, Specification)
+                SELECT 'USB-C Dock D5', 'PortHub', 'Docking station with multi-port support.', 119.50, 20, '2x HDMI, 1x Ethernet, 4x USB'
+                WHERE NOT EXISTS (SELECT 1 FROM Product WHERE Name = 'USB-C Dock D5');
+
+                INSERT INTO Product (Name, Brand, Description, Price, Stock, Specification)
+                SELECT 'Noise Cancelling Headset H2', 'SoundPeak', 'Over-ear headset with active noise cancelling.', 159.99, 15, 'Bluetooth 5.3, 30h battery'
+                WHERE NOT EXISTS (SELECT 1 FROM Product WHERE Name = 'Noise Cancelling Headset H2');
+            ";
+
             if (connection != null)
             {
                 //ensure the connection is open
@@ -142,6 +164,14 @@ namespace DataTechnologies.Repositories
                     command.CommandType = CommandType.Text;
   
                     command.ExecuteNonQuery();
+                }
+
+                using (var seedCommand = connection.CreateCommand())
+                {
+                    seedCommand.CommandText = seedProductsSql;
+                    seedCommand.CommandType = CommandType.Text;
+
+                    seedCommand.ExecuteNonQuery();
                 }
             }
         }
