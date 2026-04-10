@@ -9,16 +9,16 @@ public class ProductRepository
         _connectionString = connectionString;
     }
 
-    public async Task<int> AddAsync(Product product)
+    public int Add(Product product)
     {
         const string sql = @"
             INSERT INTO products (name, brand, description, price, stock, specification)
             VALUES (@Name, @Brand, @Description, @Price, @Stock, @Specification)
             RETURNING product_id;";
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
-        await using var cmd = new NpgsqlCommand(sql, conn);
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
 
         cmd.Parameters.AddWithValue("Name",          product.Name);
         cmd.Parameters.AddWithValue("Brand",         product.Brand);
@@ -27,39 +27,39 @@ public class ProductRepository
         cmd.Parameters.AddWithValue("Stock",         product.Stock);
         cmd.Parameters.AddWithValue("Specification", product.Specification);
 
-        return (int)(await cmd.ExecuteScalarAsync())!;
+        return (int)cmd.ExecuteScalar()!;
     }
 
-    public async Task<Product?> GetByIdAsync(int productId)
+    public Product? GetById(int productId)
     {
         const string sql = "SELECT * FROM products WHERE product_id = @Id;";
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
-        await using var cmd = new NpgsqlCommand(sql, conn);
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("Id", productId);
 
-        await using var reader = await cmd.ExecuteReaderAsync();
-        return await reader.ReadAsync() ? MapProduct(reader) : null;
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? MapProduct(reader) : null;
     }
 
-    public async Task<List<Product>> GetAllAsync()
+    public List<Product> GetAll()
     {
         const string sql = "SELECT * FROM products;";
         var products = new List<Product>();
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
-        await using var cmd  = new NpgsqlCommand(sql, conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+        using var reader = cmd.ExecuteReader();
 
-        while (await reader.ReadAsync())
+        while (reader.Read())
             products.Add(MapProduct(reader));
 
         return products;
     }
 
-    public async Task<bool> UpdateAsync(Product product)
+    public bool Update(Product product)
     {
         const string sql = @"
             UPDATE products
@@ -71,9 +71,9 @@ public class ProductRepository
                 specification = @Specification
             WHERE product_id  = @Id;";
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
-        await using var cmd = new NpgsqlCommand(sql, conn);
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
 
         cmd.Parameters.AddWithValue("Id",            product.ProductID);
         cmd.Parameters.AddWithValue("Name",          product.Name);
@@ -83,19 +83,19 @@ public class ProductRepository
         cmd.Parameters.AddWithValue("Stock",         product.Stock);
         cmd.Parameters.AddWithValue("Specification", product.Specification);
 
-        return await cmd.ExecuteNonQueryAsync() > 0;
+        return cmd.ExecuteNonQuery() > 0;
     }
 
-    public async Task<bool> DeleteAsync(int productId)
+    public bool Delete(int productId)
     {
         const string sql = "DELETE FROM products WHERE product_id = @Id;";
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
-        await using var cmd = new NpgsqlCommand(sql, conn);
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("Id", productId);
 
-        return await cmd.ExecuteNonQueryAsync() > 0;
+        return cmd.ExecuteNonQuery() > 0;
     }
 
     private static Product MapProduct(NpgsqlDataReader r) => new()

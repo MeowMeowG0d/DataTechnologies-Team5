@@ -1,17 +1,20 @@
 ﻿using Spectre.Console;
 using DataTechnologies.Data;
 using DataTechnologies.Repositories;
-using System.Data;
+using DataTechnologies.UI;
 
-// Heb dit gegenereerd met AI (als beginnertje voor Program.cs), dit kan volledig worden aangepast.
+void RenderHeader()
+{
+	AnsiConsole.Write(
+		new FigletText("Team 5 CLI")
+			.LeftJustified()
+			.Color(Color.Green));
 
-AnsiConsole.Write(
-	new FigletText("Team 5 CLI")
-		.LeftJustified()
-		.Color(Color.Green));
+	AnsiConsole.MarkupLine("[grey]DataTechnologies command-line app[/]");
+	AnsiConsole.WriteLine();
+}
 
-AnsiConsole.MarkupLine("[grey]DataTechnologies command-line app[/]");
-AnsiConsole.WriteLine();
+RenderHeader();
 
 if (!AnsiConsole.Profile.Capabilities.Interactive)
 {
@@ -30,96 +33,151 @@ if (!AnsiConsole.Profile.Capabilities.Interactive)
 	return;
 }
 
-var option = AnsiConsole.Prompt(
-	new SelectionPrompt<string>()
-		.Title("Choose an action")
-		.AddChoices(new[]
-		{
-			"Run demo",
-			"Show status",
-			"Test Database Connection",
-			"Initialize Database Tables",
-			"Insert Test Data",
-			"Exit"
-		}));
+var shouldExit = false;
 
-switch (option)
+while (!shouldExit)
 {
-	case "Run demo":
-		AnsiConsole.MarkupLine("[green]Demo completed successfully.[/]");
-		break;
-	case "Show status":
-		var table = new Table()
-			.RoundedBorder()
-			.AddColumn("Check")
-			.AddColumn("Result");
+	AnsiConsole.Clear();
+	RenderHeader();
 
-		table.AddRow("Project", "CLI (Spectre.Console)");
-		table.AddRow("Framework", ".NET 8");
-		table.AddRow("Mode", "Interactive");
-
-		AnsiConsole.Write(table);
-		break;
-	case "Test Database Connection":
-		try
-		{
-			var dbConnection = new DBConnection();
-			using (var connection = dbConnection.GetConnection())
+	var option = AnsiConsole.Prompt(
+		new SelectionPrompt<string>()
+			.Title("Choose an action")
+			.AddChoices(new[]
 			{
-				connection.Open();
-				AnsiConsole.MarkupLine("[green]Database connection successful![/]");
+				"Run demo",
+				"Show status",
+				"Test Database Connection",
+				"Initialize Database Tables",
+				"Insert Test Data",
+				"Exit"
+			}));
+
+	AnsiConsole.Clear();
+	RenderHeader();
+
+	switch (option)
+	{
+		case "Run demo":
+			try
+			{
+				AnsiConsole.MarkupLine("[green]Demo gestart.[/]");
+
+				var demoOption = AnsiConsole.Prompt(
+					new SelectionPrompt<string>()
+						.Title("Demo options")
+						.AddChoices(new[]
+						{
+							"Show available products",
+							"Back"
+						}));
+
+				if (demoOption == "Show available products")
+				{
+					var productOverviewScreen = new ProductOverviewScreen();
+					productOverviewScreen.ShowAvailableProducts();
+				}
 			}
-		}
-		catch (Exception ex)
-		{
-			AnsiConsole.MarkupLine($"[red]Database connection failed: {ex.Message}[/]");
-		}
-		break;
-	case "Initialize Database Tables":
-		try
-		{
-			var dbName = AnsiConsole.Ask<string>("Enter database name:");
-
-			AnsiConsole.Status().Start($"Initializing database '{dbName}'...", ctx =>
+			catch (Exception ex)
 			{
-				DBConnection.CreateDatabaseIfNotExists(dbName);
+				AnsiConsole.MarkupLine($"[red]Could not load products in demo: {ex.Message}[/]");
+			}
+			break;
+		case "Show status":
+			var table = new Table()
+				.RoundedBorder()
+				.AddColumn("Check")
+				.AddColumn("Result");
 
-				var dbConnection = new DBConnection(dbName);
+			table.AddRow("Project", "CLI (Spectre.Console)");
+			table.AddRow("Framework", ".NET 8");
+			table.AddRow("Mode", "Interactive");
+
+			AnsiConsole.Write(table);
+			break;
+		case "Test Database Connection":
+			try
+			{
+				var dbConnection = new DBConnection();
 				using (var connection = dbConnection.GetConnection())
 				{
-					var repository = new DatabaseInitializerRepository();
-					repository.InitializeDatabase(connection);
+					connection.Open();
+					AnsiConsole.MarkupLine("[green]Database connection successful![/]");
 				}
-			});
-			AnsiConsole.MarkupLine($"[green]Database '{dbName}' and tables initialized successfully![/]");
-		}
-		catch (Exception ex)
-		{
-			AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
-		}
-		break;
-	case "Insert Test Data":
-		try
-		{
-			var dbName = AnsiConsole.Ask<string>("Enter database name (where tables exist):");
-
-			AnsiConsole.Status().Start($"Inserting test data into '{dbName}'...", ctx =>
+			}
+			catch (Exception ex)
 			{
-				var dbConnection = new DBConnection(dbName);
-				using (var connection = dbConnection.GetConnection())
+				AnsiConsole.MarkupLine($"[red]Database connection failed: {ex.Message}[/]");
+			}
+			break;
+		case "Initialize Database Tables":
+			try
+			{
+				var initOption = AnsiConsole.Prompt(
+					new SelectionPrompt<string>()
+						.Title("Initialize options")
+						.AddChoices(new[]
+						{
+							"Initialize now",
+							"Back"
+						}));
+
+				if (initOption == "Initialize now")
 				{
-					var seeder = new TestDataSeederRepository();
-					seeder.SeedTestData(connection);
+					var dbName = AnsiConsole.Ask<string>("Enter database name:");
+
+					AnsiConsole.Status().Start($"Initializing database '{dbName}'...", ctx =>
+					{
+						DBConnection.CreateDatabaseIfNotExists(dbName);
+
+						var dbConnection = new DBConnection(dbName);
+						using (var connection = dbConnection.GetConnection())
+						{
+							var repository = new DatabaseInitializerRepository();
+							repository.InitializeDatabase(connection);
+						}
+					});
+
+					AnsiConsole.MarkupLine($"[green]Database '{dbName}' and tables initialized successfully![/]");
 				}
-			});
-			AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");
-		}
-		catch (Exception ex)
-		{
-			AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
-		}
-		break;
-	default:
-		AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");
-		break;
+			}
+			catch (Exception ex)
+			{
+				AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
+			}
+			break;
+		case "Insert Test Data":
+			try
+			{
+				var dbName = AnsiConsole.Ask<string>("Enter database name (where tables exist):");
+
+				AnsiConsole.Status().Start($"Inserting test data into '{dbName}'...", ctx =>
+				{
+					var dbConnection = new DBConnection(dbName);
+					using (var connection = dbConnection.GetConnection())
+					{
+						var seeder = new TestDataSeederRepository();
+						seeder.SeedTestData(connection);
+					}
+				});
+
+				AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");
+			}
+			catch (Exception ex)
+			{
+				AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
+			}
+			break;
+		default:
+			shouldExit = true;
+			AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");
+			break;
+	}
+
+	if (!shouldExit)
+	{
+		AnsiConsole.WriteLine();
+		AnsiConsole.MarkupLine("[grey]Press any key to return to main menu...[/]");
+		Console.ReadKey(true);
+	}
 }
