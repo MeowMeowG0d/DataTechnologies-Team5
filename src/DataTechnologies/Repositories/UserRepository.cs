@@ -3,8 +3,16 @@ using Npgsql;
 
 namespace DataTechnologies.Repositories;
 
-public class UserRepository(string connectionString)
+
+public class UserRepository
 {
+    private readonly string _connectionString;
+
+    public UserRepository(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
+
     public int Add(User user)
     {
         const string sql = @"
@@ -12,7 +20,7 @@ public class UserRepository(string connectionString)
             VALUES (@Email, @PasswordHash, @Name, @EmailVerified)
             RETURNING UserId;";
 
-        using var conn = new NpgsqlConnection(connectionString);
+        using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
 
@@ -34,7 +42,7 @@ public class UserRepository(string connectionString)
                 EmailVerified   = @EmailVerified
             WHERE UserId        = @UserId;";
 
-        using var conn = new NpgsqlConnection(connectionString);
+        using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
 
@@ -51,7 +59,7 @@ public class UserRepository(string connectionString)
     {
         const string sql = "DELETE FROM Users WHERE UserId = @UserId;";
 
-        using var conn = new NpgsqlConnection(connectionString);
+        using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@UserId", userId);
@@ -74,7 +82,7 @@ public class UserRepository(string connectionString)
     {
         const string sql = "SELECT * FROM Users WHERE UserId = @UserId;";
 
-        using var conn = new NpgsqlConnection(connectionString);
+        using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@UserId", userId);
@@ -90,7 +98,7 @@ public class UserRepository(string connectionString)
     {
         const string sql = "SELECT * FROM Users WHERE Email = @Email;";
 
-        using var conn = new NpgsqlConnection(connectionString);
+        using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@Email", email);
@@ -106,7 +114,7 @@ public class UserRepository(string connectionString)
     {
         const string sql = "SELECT * FROM Users;";
 
-        using var conn = new NpgsqlConnection(connectionString);
+        using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
 

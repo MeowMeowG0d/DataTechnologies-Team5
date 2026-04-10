@@ -1,3 +1,4 @@
+using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using Spectre.Console;
 using System.Collections.Generic;
@@ -10,6 +11,10 @@ namespace DataTechnologies.UI
         private const string Checkout = "Afrekenen";
         private const string BackToMenu = "Terug naar producten";
         private readonly ShoppingCartService _shoppingCartService;
+
+        private readonly AddressService _addressService;
+
+        private readonly UserService _userService;
         private readonly int _userId;
 
         public ShoppingCartScreen(ShoppingCartService shoppingCartService, int userId)
@@ -130,10 +135,109 @@ namespace DataTechnologies.UI
 
             if (action == Checkout)
             {
-                AnsiConsole.MarkupLine("[yellow]Afrekenen is nog niet geïmplementeerd![/]");
-                AnsiConsole.WriteLine("Druk op een knop om terug te gaan...");
-                Console.ReadKey(true);
-                ShowCartOverview();
+                if (_userId == 0)
+                {
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om af te rekenen.[/]");
+                    PromptActions(true);
+                    return;
+                }
+
+                else
+                {
+                    var user = _userService.GetUserById(_userId);
+                    AnsiConsole.MarkupLine($"[yellow]Leveringsgegevens voor {user.Name}[/]");
+                    AnsiConsole.MarkupLine($"[yellow]Email:{user.Email}[/]");
+
+                    var existingAddress = _addressService.GetAddressByUserId(user.UserId);
+                    {
+                        if (existingAddress != null)
+                        {
+                            AnsiConsole.MarkupLine("[green]We hebben al een adres voor je gevonden:[/]");
+                            AnsiConsole.MarkupLine($"[grey]Straat:[/] {existingAddress.Street} {existingAddress.Number}");
+                            AnsiConsole.MarkupLine($"[grey]Postcode:[/] {existingAddress.Postcode}");
+                            AnsiConsole.MarkupLine($"[grey]Stad:[/] {existingAddress.city}");
+                            AnsiConsole.MarkupLine($"[grey]Land:[/] {existingAddress.Country}");
+                            AnsiConsole.MarkupLine($"[grey]Toevoeging:[/] {existingAddress.Type}");
+                            var useExisting = AnsiConsole.Prompt(
+                                new SelectionPrompt<string>()
+                                    .Title("Wil je dit adres gebruiken?")
+                                    .AddChoices("Ja", "Nee"));
+                            if (useExisting == "Ja")
+                            {
+                                AnsiConsole.MarkupLine("[green]Adres bevestigd![/]");
+                                // You can proceed to payment method selection here if you want.
+                                return;
+                            }                    
+                        }
+                    }
+        
+                    string address;
+                    do {
+                        address = AnsiConsole.Ask<string>("Voer je adres in:");
+                        if (string.IsNullOrWhiteSpace(address))
+                            AnsiConsole.MarkupLine("[red]Adres is verplicht.[/]");
+                    } while (string.IsNullOrWhiteSpace(address));
+
+                    string number;
+                    do {
+                        number = AnsiConsole.Ask<string>("Voer je huisnummer in:");
+                        if (string.IsNullOrWhiteSpace(number))
+                            AnsiConsole.MarkupLine("[red]Huisnummer is verplicht.[/]");
+                    } while (string.IsNullOrWhiteSpace(number));
+
+                    string postcode;
+                    do {
+                        postcode = AnsiConsole.Ask<string>("Voer je postcode in:");
+                        if (string.IsNullOrWhiteSpace(postcode))
+                            AnsiConsole.MarkupLine("[red]Postcode is verplicht.[/]");
+                        else if (!System.Text.RegularExpressions.Regex.IsMatch(postcode, @"^\d{4}\s?[A-Za-z]{2}$"))
+                            AnsiConsole.MarkupLine("[red]Ongeldige postcode. Gebruik het formaat 1234 AB.[/]");
+                        else break;
+                    } while (true);
+
+                    string city;
+                    do {
+                        city = AnsiConsole.Ask<string>("Voer je stad in:");
+                        if (string.IsNullOrWhiteSpace(city))
+                            AnsiConsole.MarkupLine("[red]Stad is verplicht.[/]");
+                        else if (!System.Text.RegularExpressions.Regex.IsMatch(city, @"^[A-Za-z\s\-]+$"))
+                            AnsiConsole.MarkupLine("[red]Ongeldige plaatsnaam. Gebruik alleen letters.[/]");
+                        else break;
+                    } while (true);
+
+                    string country;
+                    do {
+                        country = AnsiConsole.Ask<string>("Voer je land in:");
+                        if (string.IsNullOrWhiteSpace(country))
+                            AnsiConsole.MarkupLine("[red]Land is verplicht.[/]");
+                    } while (string.IsNullOrWhiteSpace(country));
+
+                    string type;
+                    do {
+                        type = AnsiConsole.Ask<string>("Voer je toevoeging in (appartement, rijtjeshuis):");
+                        if (string.IsNullOrWhiteSpace(type))
+                            AnsiConsole.MarkupLine("[red]Toevoeging is verplicht.[/]");
+                    } while (string.IsNullOrWhiteSpace(type));
+
+                    var newAddress = _addressService.SaveAddress(user.UserId, address, number, postcode, city, country, type);
+
+                AnsiConsole.MarkupLine("[green]Adres opgeslagen![/]");
+                AnsiConsole.MarkupLine($"[grey]Straat:[/] {address} {number}");
+                AnsiConsole.MarkupLine($"[grey]Postcode:[/] {postcode.ToUpper()}");
+                AnsiConsole.MarkupLine($"[grey]Stad:[/] {city}");
+                AnsiConsole.MarkupLine($"[grey]Land:[/] {country}");
+                AnsiConsole.MarkupLine($"[grey]Toevoeging:[/] {type}");
+
+
+                var paymentMethod = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Kies je betaalmethode:")
+                        .AddChoices("iDEAL", "Klarna", "Creditcard", "PayPal"));
+
+                AnsiConsole.MarkupLine($"Bevestiging[/]");
+
+
+                }
             }
             else if (action == BackToMenu)
             {
