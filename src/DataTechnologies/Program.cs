@@ -39,6 +39,7 @@ var option = AnsiConsole.Prompt(
 			"Show status",
 			"Test Database Connection",
 			"Initialize Database Tables",
+			"Insert Test Data",
 			"Exit"
 		}));
 
@@ -95,6 +96,27 @@ switch (option)
 		catch (Exception ex)
 		{
 			AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
+		}
+		break;
+	case "Insert Test Data":
+		try
+		{
+			var dbName = AnsiConsole.Ask<string>("Enter database name (where tables exist):");
+
+			AnsiConsole.Status().Start($"Inserting test data into '{dbName}'...", ctx =>
+			{
+				var dbConnection = new DBConnection(dbName);
+				using (var connection = dbConnection.GetConnection())
+				{
+					var seeder = new TestDataSeederRepository();
+					seeder.SeedTestData(connection);
+				}
+			});
+			AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");
+		}
+		catch (Exception ex)
+		{
+			AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
 		}
 		break;
 	default:
