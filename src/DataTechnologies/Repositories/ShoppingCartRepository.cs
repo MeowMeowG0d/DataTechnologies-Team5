@@ -32,10 +32,11 @@ public class ShoppingCartRepository
 
         var varGetItems = connection.CreateCommand(); //not using "using" keyword remember to close
         varGetItems.CommandText = $"""
-            SELECT * FROM public.cartitems
+            SELECT cartitems.cartitemid, product.productid, product.name, product.price, cartitems.quantity 
+            FROM cartitems
             INNER JOIN product 
                 ON cartitems.productid = product.productid
-            WHERE cartitems.cartid = 1
+            WHERE cartitems.cartid = {shoppingCartId}
             """;
 
         return varGetItems.ExecuteReader(CommandBehavior.CloseConnection); //should close connection when done

@@ -54,10 +54,8 @@ namespace DataTechnologies.UI
             }
             if (selectedOption == ViewCart)
             {
-                // TODO: Code to view shopping cart goes here
-                AnsiConsole.MarkupLine("[yellow]Winkelwagen functionaliteit komt binnenkort![/]");
-                AnsiConsole.WriteLine("Druk op een knop om door te gaan...");
-                Console.ReadKey(true);
+                var cartScreen = new ShoppingCartScreen(_shoppingCartService, TEMPUSERID);
+                cartScreen.ShowCartOverview();
                 AnsiConsole.Clear();
                 ShowAvailableProducts();
                 return;

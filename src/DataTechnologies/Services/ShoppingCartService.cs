@@ -47,4 +47,14 @@ public class ShoppingCartService
         //add item to cart
         _SHRepository.AddOrUpdateItemInCart(cartId.Value, productId);
     }
+
+    public int? GetCartIdByUserId(int userId)
+    {
+        return _SHRepository.GetCartIdByUserId(userId);
+    }
+
+    public IDataReader GetAllProductsFromCart(int shoppingCartId)
+    {
+        return _SHRepository.GetAllProductsFromCart(shoppingCartId);
+    }
 }
