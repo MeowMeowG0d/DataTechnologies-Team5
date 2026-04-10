@@ -1,5 +1,6 @@
 ﻿using Spectre.Console;
 using DataTechnologies.Data;
+using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
@@ -55,15 +56,15 @@ while (!shouldExit)
 					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService);
 					productOverviewScreen.ShowAvailableProducts();
 				}
-				else if (demoOption == MenuOptions.ShowOrderOverview)
-				{
-					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
-					var dbConnection = new DBConnection(demoDatabaseName);
-					var orderRepo = new DataTechnologies.Repositories.OrderRepository(dbConnection.GetConnection().ConnectionString);
-					// For demo, use userId = 1
-					var orderOverviewScreen = new DataTechnologies.UI.OrderOverviewScreen(orderRepo, 1);
-					orderOverviewScreen.ShowOrderOverview();
-				}
+				else if (demoOption == MenuOptions.User)
+                {
+                    var dbConnection = new DBConnection();
+                    var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+                    var userService = new UserService(userRepo, new PasswordHasher());
+
+                    UserMenu.ShowUserDemo(userService);
+                }
+
 			}
 			catch (Exception ex)
 			{

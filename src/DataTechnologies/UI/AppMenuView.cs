@@ -12,7 +12,14 @@ namespace DataTechnologies.UI
         public const string Exit = "Exit";
 
         public const string ShowAvailableProducts = "Show available products";
-            public const string ShowOrderOverview = "Orderoverzicht";
+        public const string User = "User options";
+
+        public const string RegisterUser = "Register user";
+        public const string LoginUser = "Login";
+        public const string UpdateUser = "Update user";
+        public const string DeleteUser = "Delete user";
+        public const string ShowAllUsers = "Show all users";
+
         public const string InitializeNow = "Initialize now";
         public const string InsertItemToCart = "Add item to cart";
         public const string Back = "Back";
@@ -32,12 +39,25 @@ namespace DataTechnologies.UI
 
         public static IReadOnlyList<string> GetDemoMenuOptions()
         {
-                return new[]
-                {
-                    ShowAvailableProducts,
-                    ShowOrderOverview,
-                    Back
-                };
+            return new[]
+            {
+                ShowAvailableProducts,
+                User,
+                Back
+            };
+        }
+
+        public static IReadOnlyList<string> GetUserDemoMenuOptions()
+        {
+            return new[]
+            {
+                RegisterUser,
+                LoginUser,
+                UpdateUser,
+                DeleteUser,
+                ShowAllUsers,
+                Back
+            };
         }
 
         public static IReadOnlyList<string> GetInitializeMenuOptions()
@@ -76,6 +96,11 @@ namespace DataTechnologies.UI
         public static string ShowInitializeMenu()
         {
             return AnsiConsole.Prompt(CreateSelectionPrompt("Initialize options", MenuOptions.GetInitializeMenuOptions()));
+        }
+
+        public static string ShowUserDemoMenu()
+        {
+            return AnsiConsole.Prompt(CreateSelectionPrompt("User demo options", MenuOptions.GetUserDemoMenuOptions()));
         }
 
         private static SelectionPrompt<string> CreateSelectionPrompt(string title, IEnumerable<string> options)
