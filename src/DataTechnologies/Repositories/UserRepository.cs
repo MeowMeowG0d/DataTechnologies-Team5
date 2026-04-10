@@ -1,0 +1,102 @@
+using DataTechnologies.Models;
+using Npgsql;
+
+namespace DataTechnologies.Repositories;
+
+public class UserRepository(string connectionString)
+{
+    public int Add(User user)
+    {
+        const string sql = @"
+            INSERT INTO Users (Email, PasswordHash, Name, EmailVerified)
+            VALUES (@Email, @PasswordHash, @Name, @EmailVerified)
+            RETURNING UserId;";
+
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+
+        cmd.Parameters.AddWithValue("@Email", user.Email);
+        cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
+        cmd.Parameters.AddWithValue("@Name", user.Name);
+        cmd.Parameters.AddWithValue("@EmailVerified", user.EmailVerified);
+
+        return (int)cmd.ExecuteScalar()!;
+    }
+
+    public bool Update(User user)
+    {
+        const string sql = @"
+            UPDATE Users
+            SET Email           = @Email,
+                PasswordHash    = @PasswordHash,
+                Name            = @Name,
+                EmailVerified   = @EmailVerified
+            WHERE UserId        = @UserId;";
+
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+
+        cmd.Parameters.AddWithValue("@UserId", user.UserId);
+        cmd.Parameters.AddWithValue("@Email", user.Email);
+        cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
+        cmd.Parameters.AddWithValue("@Name", user.Name);
+        cmd.Parameters.AddWithValue("@EmailVerified", user.EmailVerified);
+
+        return cmd.ExecuteNonQuery() > 0;
+    }
+
+    public bool Delete(int userId)
+    {
+        const string sql = "DELETE FROM Users WHERE UserId = @UserId;";
+
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@UserId", userId);
+
+        return cmd.ExecuteNonQuery() > 0;
+    }
+
+    public User? GetById(int userId)
+    {
+        const string sql = "SELECT * FROM Users WHERE UserId = @UserId;";
+
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@UserId", userId);
+
+        using var reader = cmd.ExecuteReader();
+        if (reader.Read())
+            return Map(reader);
+
+        return null;
+    }
+
+    public User? GetByEmail(string email)
+    {
+        const string sql = "SELECT * FROM Users WHERE Email = @Email;";
+
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@Email", email);
+
+        using var reader = cmd.ExecuteReader();
+        if (reader.Read())
+            return Map(reader);
+
+        return null;
+    }
+
+    private static User Map(NpgsqlDataReader reader) => new()
+    {
+        UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
+        Email = reader.GetString(reader.GetOrdinal("Email")),
+        PasswordHash = reader.GetString(reader.GetOrdinal("PasswordHash")),
+        Name = reader.GetString(reader.GetOrdinal("Name")),
+        EmailVerified = reader.GetBoolean(reader.GetOrdinal("EmailVerified"))
+    };
+}
