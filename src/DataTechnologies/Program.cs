@@ -140,10 +140,6 @@ while (!shouldExit)
 			}
 			break;
 
-		case MenuOptions.InsertItemToCart:
-			// ShoppingCartService shoppingCartService = new ShoppingCartService(new DBConnection("lukas"));
-			// shoppingCartService.AddItemToCart(1, 1);
-			break;
 		default:
 			shouldExit = true;
 			AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");

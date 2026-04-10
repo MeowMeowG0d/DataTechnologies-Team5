@@ -25,7 +25,6 @@ namespace DataTechnologies.UI
                 TestDatabaseConnection,
                 InitializeDatabaseTables,
                 InsertTestData,
-                InsertItemToCart,
                 Exit
             };
         }
