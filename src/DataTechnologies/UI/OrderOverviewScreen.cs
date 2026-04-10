@@ -55,9 +55,17 @@ namespace DataTechnologies.UI
             {
                 var success = _orderRepository.PlaceOrder(order.OrderID);
                 if (success)
-                    AnsiConsole.MarkupLine("[green]Bestelling succesvol geplaatst![/]");
+                {
+                    var emailService = new DataTechnologies.Services.EmailService();
+                    var productOverview = string.Join(", ", items.Select(i => $"ProductID: {i.ProductID} x{i.Quantity} (€{i.PriceAtPurchase:0.00})"));
+                    string email = "demo@voorbeeld.nl";
+                    emailService.SendOrderConfirmation(email, order, address, productOverview, order.TotalAmount);
+                    AnsiConsole.MarkupLine("[green]Bestelling succesvol geplaatst! Een bevestiging is per e-mail verstuurd.[/]");
+                }
                 else
+                {
                     AnsiConsole.MarkupLine("[red]Er is iets misgegaan bij het plaatsen van de bestelling.[/]");
+                }
             }
             else
             {
