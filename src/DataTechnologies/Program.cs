@@ -1,4 +1,7 @@
 ﻿using Spectre.Console;
+using DataTechnologies.Data;
+using DataTechnologies.Repositories;
+using System.Data;
 
 // Heb dit gegenereerd met AI (als beginnertje voor Program.cs), dit kan volledig worden aangepast.
 
@@ -34,6 +37,8 @@ var option = AnsiConsole.Prompt(
 		{
 			"Run demo",
 			"Show status",
+			"Test Database Connection",
+			"Initialize Database Tables",
 			"Exit"
 		}));
 
@@ -53,6 +58,44 @@ switch (option)
 		table.AddRow("Mode", "Interactive");
 
 		AnsiConsole.Write(table);
+		break;
+	case "Test Database Connection":
+		try
+		{
+			var dbConnection = new DBConnection();
+			using (var connection = dbConnection.GetConnection())
+			{
+				connection.Open();
+				AnsiConsole.MarkupLine("[green]Database connection successful![/]");
+			}
+		}
+		catch (Exception ex)
+		{
+			AnsiConsole.MarkupLine($"[red]Database connection failed: {ex.Message}[/]");
+		}
+		break;
+	case "Initialize Database Tables":
+		try
+		{
+			var dbName = AnsiConsole.Ask<string>("Enter database name:");
+
+			AnsiConsole.Status().Start($"Initializing database '{dbName}'...", ctx =>
+			{
+				DBConnection.CreateDatabaseIfNotExists(dbName);
+
+				var dbConnection = new DBConnection(dbName);
+				using (var connection = dbConnection.GetConnection())
+				{
+					var repository = new DatabaseInitializerRepository();
+					repository.InitializeDatabase(connection);
+				}
+			});
+			AnsiConsole.MarkupLine($"[green]Database '{dbName}' and tables initialized successfully![/]");
+		}
+		catch (Exception ex)
+		{
+			AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
+		}
 		break;
 	default:
 		AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");
