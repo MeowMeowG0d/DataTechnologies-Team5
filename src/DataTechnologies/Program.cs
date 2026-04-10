@@ -40,6 +40,7 @@ var option = AnsiConsole.Prompt(
 			"Test Database Connection",
 			"Initialize Database Tables",
 			"Insert Test Data",
+			"Calculate total",
 			"Exit"
 		}));
 
@@ -118,6 +119,10 @@ switch (option)
 		{
 			AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
 		}
+		break;
+	case "Calculate total":
+		ShoppingCartService shoppingCartService = new(new DBConnection("lukas"));
+		shoppingCartService.CalculateTotalPrice(1);
 		break;
 	default:
 		AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");
