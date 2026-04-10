@@ -3,6 +3,7 @@ using DataTechnologies.Data;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
+using System.Data.Common;
 
 AppMenuView.RenderHeader();
 
@@ -136,6 +137,11 @@ while (!shouldExit)
 			{
 				AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
 			}
+			break;
+
+		case MenuOptions.InsertItemToCart:
+			ShoppingCartService shoppingCartService = new ShoppingCartService(new DBConnection("lukas"));
+			shoppingCartService.AddItemToCart(1, 1);
 			break;
 		default:
 			shouldExit = true;

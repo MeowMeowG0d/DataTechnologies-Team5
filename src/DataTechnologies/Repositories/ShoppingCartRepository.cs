@@ -36,9 +36,63 @@ public class ShoppingCartRepository
             INNER JOIN product 
                 ON cartitems.productid = product.productid
             WHERE cartitems.cartid = 1
-            ORDER BY cartid ASC 
             """;
 
         return varGetItems.ExecuteReader(CommandBehavior.CloseConnection); //should close connection when done
+    }
+
+    public int? GetCartIdByUserId(int userId)
+    {
+        using var connection = _DBConnection.GetConnection();
+        connection.Open();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"SELECT CartID FROM ShoppingCarts WHERE UserID = {userId} LIMIT 1";
+        var result = cmd.ExecuteScalar();
+        
+        return result != null ? Convert.ToInt32(result) : null;
+    }
+
+    public int CreateCartForUser(int userId)
+    {
+        using var connection = _DBConnection.GetConnection();
+        connection.Open();
+
+        using var cmd = connection.CreateCommand();
+        // RETURNING gets the cartid
+        cmd.CommandText = $"INSERT INTO ShoppingCarts (UserID) VALUES ({userId}) RETURNING CartID";
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    public void AddOrUpdateItemInCart(int cartId, int productId)
+    {
+        using var connection = _DBConnection.GetConnection();
+        connection.Open();
+
+        //check if exists
+        using var checkCmd = connection.CreateCommand();
+        checkCmd.CommandText = $"SELECT CartItemID, Quantity FROM CartItems WHERE CartID = {cartId} AND ProductID = {productId} LIMIT 1";
+        
+        using var reader = checkCmd.ExecuteReader();
+        if (reader.Read())
+        {
+            //item exists, update quantity
+            int cartItemId = Convert.ToInt32(reader["CartItemID"]);
+            int newQuantity = Convert.ToInt32(reader["Quantity"]) + 1;
+            reader.Close();
+
+            using var updateCmd = connection.CreateCommand();
+            updateCmd.CommandText = $"UPDATE CartItems SET Quantity = {newQuantity} WHERE CartItemID = {cartItemId}";
+            updateCmd.ExecuteNonQuery();
+        }
+        else
+        {
+            //if item does not exits
+            reader.Close();
+            
+            using var insertCmd = connection.CreateCommand();
+            insertCmd.CommandText = $"INSERT INTO CartItems (CartID, ProductID, Quantity) VALUES ({cartId}, {productId}, 1)";
+            insertCmd.ExecuteNonQuery();
+        }
     }
 }
