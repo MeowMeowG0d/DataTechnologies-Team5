@@ -122,7 +122,7 @@ switch (option)
 		break;
 	case "Calculate total":
 		ShoppingCartService shoppingCartService = new(new DBConnection("lukas"));
-		shoppingCartService.CalculateTotalPrice(1);
+		Console.WriteLine(shoppingCartService.CalculateTotalPriceBTW(1));
 		break;
 	default:
 		AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");

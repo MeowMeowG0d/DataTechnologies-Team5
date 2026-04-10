@@ -1,25 +1,32 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Data;
 using DataTechnologies.Data;
 
 public class ShoppingCartService
 {
     private readonly DBConnection _DBConnection;
+    private readonly ShoppingCartRepository _SHRepository;
     public ShoppingCartService(DBConnection dBConnection)
     {
         _DBConnection = dBConnection;
+        _SHRepository = new ShoppingCartRepository(_DBConnection);
     }
 
-    public float CalculateTotalPrice(int shoppingCartId)
+    public decimal CalculateTotalPriceBTW(int shoppingCartId)
     {
-        using var connection = _DBConnection.GetConnection();
-        connection.Open();
+        using IDataReader items = _SHRepository.GetAllProductsFromCart(shoppingCartId);
+        if (items == null) return -1;
 
-        using var checkCartCmd = connection.CreateCommand();
-        checkCartCmd.CommandText = $"SELECT * FROM shoppingcarts WHERE cartid = {shoppingCartId} LIMIT 1";
-        var exists = checkCartCmd.ExecuteScalar() != null;
-        if (!exists) return -1;
+        decimal totalPrice = 0;
 
-        
-
-        return 0;
+        while (items.Read())
+        {
+            int quantity = Convert.ToInt32(items["quantity"]);
+            decimal price = Convert.ToDecimal(items["price"]);
+            
+            totalPrice += quantity * (price * 1.21m);
+        }
+        items.Dispose();
+        return Math.Round(totalPrice, 2);
     }
 }

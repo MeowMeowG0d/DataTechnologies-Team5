@@ -1,4 +1,4 @@
-public class CarItems
+public class CartItems
 {
     public int CartItemID { get; set; }
     public int CartID {get; set; }
