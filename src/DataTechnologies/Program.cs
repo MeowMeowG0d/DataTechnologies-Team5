@@ -2,9 +2,6 @@
 using DataTechnologies.Data;
 using DataTechnologies.Repositories;
 using DataTechnologies.UI;
-using System.Data;
-
-// Heb dit gegenereerd met AI (als beginnertje voor Program.cs), dit kan volledig worden aangepast.
 
 void RenderHeader()
 {
@@ -52,7 +49,7 @@ while (!shouldExit)
 				"Show status",
 				"Test Database Connection",
 				"Initialize Database Tables",
-				"Seed Demo Products (team5)",
+				"Insert Test Data",
 				"Exit"
 			}));
 
@@ -140,6 +137,7 @@ while (!shouldExit)
 							repository.InitializeDatabase(connection);
 						}
 					});
+
 					AnsiConsole.MarkupLine($"[green]Database '{dbName}' and tables initialized successfully![/]");
 				}
 			}
@@ -148,26 +146,26 @@ while (!shouldExit)
 				AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
 			}
 			break;
-		case "Seed Demo Products (team5)":
+		case "Insert Test Data":
 			try
 			{
-				AnsiConsole.Status().Start("Seeding demo products in 'team5'...", ctx =>
-				{
-					DBConnection.CreateDatabaseIfNotExists("team5");
+				var dbName = AnsiConsole.Ask<string>("Enter database name (where tables exist):");
 
-					var dbConnection = new DBConnection("team5");
+				AnsiConsole.Status().Start($"Inserting test data into '{dbName}'...", ctx =>
+				{
+					var dbConnection = new DBConnection(dbName);
 					using (var connection = dbConnection.GetConnection())
 					{
-						var repository = new DatabaseInitializerRepository();
-						repository.InitializeDatabase(connection);
+						var seeder = new TestDataSeederRepository();
+						seeder.SeedTestData(connection);
 					}
 				});
 
-				AnsiConsole.MarkupLine("[green]Demo products are toegevoegd in database 'team5'.[/]");
+				AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");
 			}
 			catch (Exception ex)
 			{
-				AnsiConsole.MarkupLine($"[red]Seeding failed: {ex.Message}[/]");
+				AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
 			}
 			break;
 		default:
