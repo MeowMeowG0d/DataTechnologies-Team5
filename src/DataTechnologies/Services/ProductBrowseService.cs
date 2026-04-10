@@ -6,14 +6,14 @@ namespace DataTechnologies.Services
     {
         private readonly ProductRepository _productRepository;
 
-        public ProductBrowseService(ProductRepository? productRepository = null)
+        public ProductBrowseService(ProductRepository productRepository)
         {
-            _productRepository = productRepository ?? new ProductRepository();
+            _productRepository = productRepository;
         }
 
         public List<Product> GetAvailableProducts()
         {
-            return _productRepository.GetAvailableProducts();
+            return _productRepository.GetAll();
         }
     }
 }

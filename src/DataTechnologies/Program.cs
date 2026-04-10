@@ -1,6 +1,7 @@
 ﻿using Spectre.Console;
 using DataTechnologies.Data;
 using DataTechnologies.Repositories;
+using DataTechnologies.Services;
 using DataTechnologies.UI;
 
 void RenderHeader()
@@ -74,7 +75,10 @@ while (!shouldExit)
 
 				if (demoOption == "Show available products")
 				{
-					var productOverviewScreen = new ProductOverviewScreen();
+					var dbConnection = new DBConnection();
+					var repo = new ProductRepository(dbConnection.GetConnection().ConnectionString);
+					var service = new ProductBrowseService(repo);
+					var productOverviewScreen = new ProductOverviewScreen(service);
 					productOverviewScreen.ShowAvailableProducts();
 				}
 			}

@@ -7,9 +7,9 @@ namespace DataTechnologies.UI
     {
         private readonly ProductBrowseService _productBrowseService;
 
-        public ProductOverviewScreen(ProductBrowseService? productBrowseService = null)
+        public ProductOverviewScreen(ProductBrowseService productBrowseService)
         {
-            _productBrowseService = productBrowseService ?? new ProductBrowseService();
+            _productBrowseService = productBrowseService;
         }
 
         public void ShowAvailableProducts()
