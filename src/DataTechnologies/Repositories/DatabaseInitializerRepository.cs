@@ -42,7 +42,7 @@ namespace DataTechnologies.Repositories
                 );
 
                 -- 5. CarItems (CartItems) table
-                CREATE TABLE IF NOT EXISTS CarItems (
+                CREATE TABLE IF NOT EXISTS CartItems (
                     CartItemID SERIAL PRIMARY KEY,
                     CartID INT NOT NULL,
                     ProductID INT NOT NULL,
