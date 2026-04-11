@@ -137,7 +137,7 @@ namespace DataTechnologies.UI
 
                 if (_payOffShoppingCart.CheckAccountExistanc(_userId) == false)
                 {
-                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om af te rekenen.[/]");
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om af te rekenen.[/]"); //later als we alles connecten fuinction aanroepen dat inloggen is
                     PromptActions(true, totalAmount);
                     return;
                 }
