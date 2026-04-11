@@ -20,7 +20,7 @@ public class AddressRepository
         command.CommandText = @"
             INSERT INTO addresses (userid, street, number, postcode, city, country, type)
             VALUES (@userId, @street, @number, @postcode, @city, @country, @type)
-            RETURNING addressid";
+            RETURNING addresid";
 
         var p1 = command.CreateParameter(); p1.ParameterName = "@userId";   p1.Value = address.UserID;
         var p2 = command.CreateParameter(); p2.ParameterName = "@street";   p2.Value = address.Street;
@@ -54,7 +54,7 @@ public class AddressRepository
         {
             return new Addresses
             {
-                AddresID = Convert.ToInt32(reader["addressid"]),
+                AddresID = Convert.ToInt32(reader["addresid"]),
                 UserID   = Convert.ToInt32(reader["userid"]),
                 Street   = reader["street"].ToString() ?? "",
                 Number   = reader["number"].ToString() ?? "",
