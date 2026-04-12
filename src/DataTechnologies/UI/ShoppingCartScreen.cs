@@ -108,10 +108,10 @@ namespace DataTechnologies.UI
             AnsiConsole.Write(summaryTable);
             AnsiConsole.WriteLine();
 
-            PromptActions(true, totalIncBTWAndShipping);
+            PromptActions(true, totalIncBTWAndShipping, cartId.Value);
         }
 
-        private void PromptActions(bool showCheckout = false, decimal totalAmount = 0)
+        private void PromptActions(bool showCheckout = false, decimal totalAmount = 0, int cartId = 0)
         {
             var actions = new List<string>();
 
@@ -131,20 +131,20 @@ namespace DataTechnologies.UI
                 if (!showCheckout)
                 {
                     AnsiConsole.MarkupLine("[red]Je kunt niet afrekenen met een lege winkelwagen.[/]");
-                    PromptActions(false);
+                    PromptActions(false, 0, cartId);
                     return;
                 }
 
                 if (_payOffShoppingCart.CheckAccountExistanc(_userId) == false)
                 {
-                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om af te rekenen.[/]"); //later als we alles connecten fuinction aanroepen dat inloggen is
-                    PromptActions(true, totalAmount);
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om af te rekenen.[/]");
+                    PromptActions(true, totalAmount, cartId);
                     return;
                 }
                 else
                 {
                     var user = _userService.GetUserById(_userId);
-                    _payOffShoppingCart.DeliveryDetails(_userId, user.Name, user.Email, totalAmount);
+                    _payOffShoppingCart.DeliveryDetails(_userId, user.Name, user.Email, totalAmount, _shoppingCartService, cartId);
                 }
             }
             else if (action == BackToMenu)

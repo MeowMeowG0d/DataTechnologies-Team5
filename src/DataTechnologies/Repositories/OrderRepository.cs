@@ -90,6 +90,66 @@ namespace DataTechnologies.Repositories
             return cmd.ExecuteNonQuery() > 0;
         }
 
+        public void AddOrderItems(int orderId, List<(int ProductID, int Quantity, float PriceAtPurchase)> items)
+        {
+            const string sql = @"
+                INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase)
+                VALUES (@OrderID, @ProductID, @Quantity, @PriceAtPurchase);";
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            foreach (var item in items)
+            {
+                using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("OrderID",         orderId);
+                cmd.Parameters.AddWithValue("ProductID",       item.ProductID);
+                cmd.Parameters.AddWithValue("Quantity",        item.Quantity);
+                cmd.Parameters.AddWithValue("PriceAtPurchase", item.PriceAtPurchase);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        public List<(int ProductID, int Quantity, float PriceAtPurchase)> GetCartItemsForOrder(int cartId)
+        {
+            var items = new List<(int, int, float)>();
+
+            const string sql = @"
+                SELECT ci.productid, ci.quantity, p.price
+                FROM cartitems ci
+                INNER JOIN product p ON ci.productid = p.productid
+                WHERE ci.cartid = @CartID;";
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("CartID", cartId);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                int productId = reader.GetInt32(reader.GetOrdinal("productid"));
+                int quantity = reader.GetInt32(reader.GetOrdinal("quantity"));
+                float price = reader.GetFloat(reader.GetOrdinal("price"));
+
+                items.Add((productId, quantity, price));
+            }
+
+            return items;
+        }
+
+        public bool ClearShoppingCart(int cartId)
+        {
+            const string sql = "DELETE FROM CartItems WHERE CartID = @CartID;";
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("CartID", cartId);
+
+            return cmd.ExecuteNonQuery() > 0;
+        }
+
         private static Orders MapOrder(NpgsqlDataReader r) => new()
         {
             OrderID       = r.GetInt32(r.GetOrdinal("orderid")),

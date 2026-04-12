@@ -1,5 +1,6 @@
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
+using DataTechnologies.UI;
 using Microsoft.VisualBasic;
 using Spectre.Console;
 using System.Collections.Generic;
@@ -32,7 +33,7 @@ public class PayOffShoppingCart
         }
     }
 
-    public void DeliveryDetails(int UserID, string Name, string EmailAddress, decimal totalAmount)
+    public void DeliveryDetails(int UserID, string Name, string EmailAddress, decimal totalAmount, ShoppingCartService shoppingCartService = null, int cartId = 0)
     {
         AnsiConsole.MarkupLine($"[yellow]Leveringsgegevens voor {Name}[/]");
         AnsiConsole.MarkupLine($"[yellow]Email:{EmailAddress}[/]");
@@ -55,7 +56,7 @@ public class PayOffShoppingCart
             if (useExisting == "Ja")
             {
                 AnsiConsole.MarkupLine("[green]Adres bevestigd![/]");
-                PaymentDetails(UserID, Name, EmailAddress, existingAddress, totalAmount);
+                PaymentDetails(UserID, Name, EmailAddress, existingAddress, totalAmount, shoppingCartService, cartId);
                 return;
             }
         }
@@ -127,10 +128,10 @@ public class PayOffShoppingCart
         AnsiConsole.MarkupLine($"[grey]Land:[/] {country}");
         AnsiConsole.MarkupLine($"[grey]Toevoeging:[/] {type}");
 
-        PaymentDetails(UserID, Name, EmailAddress, newAddress, totalAmount);
+        PaymentDetails(UserID, Name, EmailAddress, newAddress, totalAmount, shoppingCartService, cartId);
     }
 
-    public void PaymentDetails(int UserID, string Name, string EmailAddress, Addresses Address, decimal totalAmount)
+    public void PaymentDetails(int UserID, string Name, string EmailAddress, Addresses Address, decimal totalAmount, ShoppingCartService shoppingCartService = null, int cartId = 0)
     {
         var paymentMethod = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
@@ -139,61 +140,10 @@ public class PayOffShoppingCart
 
         AnsiConsole.MarkupLine("[yellow]Bevestiging[/]");
         AnsiConsole.MarkupLine($"[yellow]Je betaalmethode is nu {paymentMethod}[/]");
-        Confirmation(UserID, Name, EmailAddress, Address, paymentMethod, totalAmount);
-    }
 
-    public void Confirmation(int UserID, string Name, string EmailAddress, Addresses Address, string PaymentMethod, decimal totalAmount)
-    {
-        AnsiConsole.MarkupLine("[yellow]═══════════════════════════════════[/]");
-        AnsiConsole.MarkupLine("[yellow]         BESTELLINGSOVERZICHT       [/]");
-        AnsiConsole.MarkupLine("[yellow]═══════════════════════════════════[/]");
-
-        AnsiConsole.MarkupLine($"[grey]Naam:[/] {Name}");
-        AnsiConsole.MarkupLine($"[grey]Email:[/] {EmailAddress}");
-
-        AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
-        AnsiConsole.MarkupLine("[grey]Leveringsadres:[/]");
-        AnsiConsole.MarkupLine($"  {Address.Street} {Address.Number}");
-        AnsiConsole.MarkupLine($"  {Address.Postcode.ToUpper()}  {Address.city}");
-        AnsiConsole.MarkupLine($"  {Address.Country}");
-        AnsiConsole.MarkupLine($"  {Address.Type}");
-
-        AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
-        AnsiConsole.MarkupLine($"[grey]Betaalmethode:[/] {PaymentMethod}");
-        AnsiConsole.MarkupLine("[yellow]═══════════════════════════════════[/]");
-
-        var confirm = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("Wil je je bestelling bevestigen?")
-                .AddChoices("Ja, bevestig bestelling", "Nee, ga terug"));
-
-        if (confirm == "Ja, bevestig bestelling")
-        {
-            string orderNumber = "ORD-" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
-
-            var order = new Orders
-            {
-                OrderNumber = orderNumber,
-                UserID = UserID,
-                PaymentMethod = PaymentMethod,
-                OrderStatus = "In behandeling",
-                TotalAmount = (float)totalAmount
-            };
-
-            _orderRepository.Add(order);
-
-            AnsiConsole.MarkupLine($"[green]Bedankt voor je bestelling! Je ontvangt een bevestiging op {EmailAddress} met OrderNummer {orderNumber}.[/]");
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[grey]Druk op een toets om terug te gaan...[/]");
-            Console.ReadKey(true);
-        }
-        else
-        {
-            AnsiConsole.MarkupLine("[red]Bestelling geannuleerd.[/]");
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[grey]Druk op een toets om terug te gaan...[/]");
-            Console.ReadKey(true);
-        }
+        var orderOverviewService = new OrderOverviewService(shoppingCartService, _addressService, _userService);
+        var orderOverviewScreen = new OrderOverviewScreen(orderOverviewService, _orderRepository, shoppingCartService, UserID, cartId, paymentMethod);
+        orderOverviewScreen.ShowOrderOverview();
     }
 }
 
