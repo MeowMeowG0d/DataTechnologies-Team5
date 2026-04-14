@@ -149,6 +149,10 @@ public class PayOffShoppingCart
         AnsiConsole.MarkupLine("[yellow]═══════════════════════════════════[/]");
 
         AnsiConsole.MarkupLine($"[grey]Naam:[/] {Name}");
+        AnsiConsole.MarkupLine($"[grey]Naam:[/] {Name}");
+
+        AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
+        AnsiConsole.MarkupLine($"[grey]Naam:[/] {Name}");
         AnsiConsole.MarkupLine($"[grey]Email:[/] {EmailAddress}");
 
         AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
@@ -175,6 +179,7 @@ public class PayOffShoppingCart
             {
                 OrderNumber = orderNumber,
                 UserID = UserID,
+                OrderDate = DateTime.UtcNow,
                 PaymentMethod = PaymentMethod,
                 OrderStatus = "In behandeling",
                 TotalAmount = (float)totalAmount

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Npgsql;
 
 namespace DataTechnologies.Repositories
@@ -14,8 +15,8 @@ namespace DataTechnologies.Repositories
         public int Add(Orders order)
         {
             const string sql = @"
-                INSERT INTO Orders (OrderNumber, UserID, PaymentMethod, OrderStatus, TotalAmount)
-                VALUES (@OrderNumber, @UserID, @PaymentMethod, @OrderStatus, @TotalAmount)
+                INSERT INTO Orders (OrderNumber, UserID, OrderDate, PaymentMethod, OrderStatus, TotalAmount)
+                VALUES (@OrderNumber, @UserID, @OrderDate, @PaymentMethod, @OrderStatus, @TotalAmount)
                 RETURNING OrderID;";
 
             using var conn = new NpgsqlConnection(_connectionString);
@@ -24,6 +25,7 @@ namespace DataTechnologies.Repositories
 
             cmd.Parameters.AddWithValue("OrderNumber",   order.OrderNumber);
             cmd.Parameters.AddWithValue("UserID",        order.UserID);
+            cmd.Parameters.AddWithValue("OrderDate", order.OrderDate);
             cmd.Parameters.AddWithValue("PaymentMethod", order.PaymentMethod);
             cmd.Parameters.AddWithValue("OrderStatus",   order.OrderStatus);
             cmd.Parameters.AddWithValue("TotalAmount",   order.TotalAmount);
@@ -95,6 +97,7 @@ namespace DataTechnologies.Repositories
             OrderID       = r.GetInt32(r.GetOrdinal("orderid")),
             OrderNumber   = ReadString(r, "ordernumber"),
             UserID        = r.GetInt32(r.GetOrdinal("userid")),
+            OrderDate = r.GetDateTime(r.GetOrdinal("orderdate")),
             PaymentMethod = ReadString(r, "paymentmethod"),
             OrderStatus   = ReadString(r, "orderstatus"),
             TotalAmount   = r.GetFloat(r.GetOrdinal("totalamount")),

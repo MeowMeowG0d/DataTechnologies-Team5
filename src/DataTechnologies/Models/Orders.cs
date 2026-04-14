@@ -7,6 +7,8 @@ public class Orders
 
     public string PaymentMethod { get; set; }
 
+    public DateTime OrderDate {get; set; }
+
     public string OrderStatus { get; set; }
 
     public float TotalAmount { get; set; }
