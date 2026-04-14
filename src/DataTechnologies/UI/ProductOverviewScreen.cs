@@ -3,20 +3,25 @@ using Spectre.Console;
 
 namespace DataTechnologies.UI
 {
-    public class ProductOverviewScreen
+public class ProductOverviewScreen
+{
+    private const string BackToMenu = "Terug";
+    private const string ViewCart = "Bekijk winkelwagen";
+    private readonly ProductBrowseService _productBrowseService;
+    private readonly ShoppingCartService _shoppingCartService;
+    private readonly UserService _userService;
+    private readonly PayOffShoppingCart _payOffShoppingCart;
+    private readonly AddressService _addressService;
+    private const int TEMPUSERID = 1;
+
+    public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService)
     {
-        private const string BackToMenu = "Terug";
-        private const string ViewCart = "Bekijk winkelwagen";
-        private readonly ProductBrowseService _productBrowseService;
-        private readonly ShoppingCartService _shoppingCartService;
-        private const int TEMPUSERID = 1;
-
-        public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService)
-        {
-            _productBrowseService = productBrowseService;
-            _shoppingCartService = shoppingCartService;
-        }
-
+        _productBrowseService = productBrowseService;
+        _shoppingCartService = shoppingCartService;
+        _userService = userService;
+        _payOffShoppingCart = payOffShoppingCart;
+        _addressService = addressService;
+    }
         public void ShowAvailableProducts()
         {
             var products = _productBrowseService.GetAvailableProducts();
@@ -54,7 +59,7 @@ namespace DataTechnologies.UI
             }
             if (selectedOption == ViewCart)
             {
-                var cartScreen = new ShoppingCartScreen(_shoppingCartService, TEMPUSERID);
+                var cartScreen = new ShoppingCartScreen(_shoppingCartService, TEMPUSERID, _userService, _payOffShoppingCart, _addressService);
                 cartScreen.ShowCartOverview();
                 AnsiConsole.Clear();
                 ShowAvailableProducts();

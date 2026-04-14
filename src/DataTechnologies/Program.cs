@@ -50,12 +50,24 @@ while (!shouldExit)
 				{
 					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
 					var dbConnection = new DBConnection(demoDatabaseName);
-					var repo = new ProductRepository(dbConnection.GetConnection().ConnectionString);
+					var connectionString = dbConnection.GetConnection().ConnectionString;
+
+					var repo = new ProductRepository(connectionString);
 					var service = new ProductBrowseService(repo);
 					var shoppingCartService = new ShoppingCartService(dbConnection);
-					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService);
+
+					var userRepo = new UserRepository(connectionString);
+					var userService = new UserService(userRepo, new PasswordHasher());
+
+					var addressService = new AddressService(dbConnection);
+
+					var orderRepo = new OrderRepository(connectionString);
+					var payOff = new PayOffShoppingCart(userService, addressService, orderRepo);
+
+					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService, userService, payOff, addressService);
 					productOverviewScreen.ShowAvailableProducts();
 				}
+				
 				else if (demoOption == MenuOptions.User)
                 {
                     var dbConnection = new DBConnection();

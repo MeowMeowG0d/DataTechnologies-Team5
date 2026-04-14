@@ -1,3 +1,4 @@
+using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using Spectre.Console;
 using System.Collections.Generic;
@@ -10,12 +11,18 @@ namespace DataTechnologies.UI
         private const string Checkout = "Afrekenen";
         private const string BackToMenu = "Terug naar producten";
         private readonly ShoppingCartService _shoppingCartService;
+        private readonly AddressService _addressService;
+        private readonly PayOffShoppingCart _payOffShoppingCart;
+        private readonly UserService _userService;
         private readonly int _userId;
 
-        public ShoppingCartScreen(ShoppingCartService shoppingCartService, int userId)
+        public ShoppingCartScreen(ShoppingCartService shoppingCartService, int userId, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService)
         {
             _shoppingCartService = shoppingCartService;
             _userId = userId;
+            _userService = userService;
+            _payOffShoppingCart = payOffShoppingCart;
+            _addressService = addressService;
         }
 
         public void ShowCartOverview()
@@ -24,11 +31,6 @@ namespace DataTechnologies.UI
             AnsiConsole.Write(new Spectre.Console.Rule("[yellow]Je Winkelwagen[/]"));
             AnsiConsole.WriteLine();
 
-            // First, lookup if this user has an active cart ID
-            // I cannot find a method in ShoppingCartService right now to get the CartID directly by UserId.
-            // You have 'GetCartIdByUserId' in ShoppingCartRepository, but we only have access to the Service here!
-            // I'll call a hypothetical method '_shoppingCartService.GetCartIdByUserId(_userId)' for now. 
-            // YOU MUST ADD access to this in ShoppingCartService.cs.
             int? cartId = _shoppingCartService.GetCartIdByUserId(_userId);
 
             if (cartId == null)
@@ -38,9 +40,6 @@ namespace DataTechnologies.UI
                 return;
             }
 
-            // Fetch the raw IDataReader containing all rows. 
-            // NOTE: You need a method in ShoppingCartService that exposes this!
-            // Because GetAllProductsFromCart is currently only available directly in ShoppingCartRepository.
             var itemsReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
 
             if (itemsReader == null)
@@ -59,14 +58,15 @@ namespace DataTechnologies.UI
                 .AddColumn("Subtotaal");
 
             bool hasItems = false;
-            
-            // Loop through the data directly from the SQL reader
+
             while (itemsReader.Read())
             {
+                int quantity = Convert.ToInt32(itemsReader["quantity"]);
+                if (quantity <= 0) continue;
+
                 hasItems = true;
                 string productId = itemsReader["productid"].ToString() ?? "";
                 string productName = itemsReader["name"].ToString() ?? "";
-                int quantity = Convert.ToInt32(itemsReader["quantity"]);
                 decimal price = Convert.ToDecimal(itemsReader["price"]);
                 decimal rowSubtotal = quantity * price;
 
@@ -77,8 +77,7 @@ namespace DataTechnologies.UI
                     $"EUR {price:0.00}",
                     $"EUR {rowSubtotal:0.00}");
             }
-            
-            // Critical! The itemsReader MUST be closed/disposed after reading!
+
             itemsReader.Dispose();
 
             if (!hasItems)
@@ -90,10 +89,9 @@ namespace DataTechnologies.UI
 
             AnsiConsole.Write(table);
 
-            // Fetch the calculated totals via the Service functions you already built:
             decimal totalExBTW = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
             decimal totalIncBTWAndShipping = _shoppingCartService.CalculateTotalPrice(cartId.Value);
-            decimal calculatedBTW = totalExBTW * 0.21m; // 21% BTW
+            decimal calculatedBTW = totalExBTW * 0.21m;
 
             var summaryTable = new Table()
                 .NoBorder()
@@ -110,10 +108,10 @@ namespace DataTechnologies.UI
             AnsiConsole.Write(summaryTable);
             AnsiConsole.WriteLine();
 
-            PromptActions(true);
+            PromptActions(true, totalIncBTWAndShipping);
         }
 
-        private void PromptActions(bool showCheckout = false)
+        private void PromptActions(bool showCheckout = false, decimal totalAmount = 0)
         {
             var actions = new List<string>();
 
@@ -130,14 +128,28 @@ namespace DataTechnologies.UI
 
             if (action == Checkout)
             {
-                AnsiConsole.MarkupLine("[yellow]Afrekenen is nog niet geïmplementeerd![/]");
-                AnsiConsole.WriteLine("Druk op een knop om terug te gaan...");
-                Console.ReadKey(true);
-                ShowCartOverview();
+                if (!showCheckout)
+                {
+                    AnsiConsole.MarkupLine("[red]Je kunt niet afrekenen met een lege winkelwagen.[/]");
+                    PromptActions(false);
+                    return;
+                }
+
+                if (_payOffShoppingCart.CheckAccountExistanc(_userId) == false)
+                {
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om af te rekenen.[/]"); //later als we alles connecten fuinction aanroepen dat inloggen is
+                    PromptActions(true, totalAmount);
+                    return;
+                }
+                else
+                {
+                    var user = _userService.GetUserById(_userId);
+                    _payOffShoppingCart.DeliveryDetails(_userId, user.Name, user.Email, totalAmount);
+                }
             }
             else if (action == BackToMenu)
             {
-                return; // Return breaks out of the screen back to previous menus
+                return;
             }
         }
     }
