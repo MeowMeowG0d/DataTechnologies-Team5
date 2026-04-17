@@ -62,7 +62,7 @@ while (!shouldExit)
 					var addressService = new AddressService(dbConnection);
 
 					var orderRepo = new OrderRepository(connectionString);
-					var payOff = new PayOffShoppingCart(userService, addressService, orderRepo);
+					var payOff = new PayOffShoppingCart(userService, addressService, orderRepo, shoppingCartService);
 
 					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService, userService, payOff, addressService);
 					productOverviewScreen.ShowAvailableProducts();
