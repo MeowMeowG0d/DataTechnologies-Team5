@@ -96,4 +96,14 @@ public class ShoppingCartRepository
             insertCmd.ExecuteNonQuery();
         }
     }
+
+    public void ClearCart(int cartId)
+    {
+        using var connection = _DBConnection.GetConnection();
+        connection.Open();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"DELETE FROM CartItems WHERE CartID = {cartId}";
+        cmd.ExecuteNonQuery();
+    }
 }

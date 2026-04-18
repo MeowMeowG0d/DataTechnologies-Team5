@@ -57,4 +57,13 @@ public class ShoppingCartService
     {
         return _SHRepository.GetAllProductsFromCart(shoppingCartId);
     }
+
+    public void ClearCart(int userId)
+    {
+        int? cartId = _SHRepository.GetCartIdByUserId(userId);
+        if (cartId != null)
+        {
+            _SHRepository.ClearCart(cartId.Value);
+        }
+    }
 }

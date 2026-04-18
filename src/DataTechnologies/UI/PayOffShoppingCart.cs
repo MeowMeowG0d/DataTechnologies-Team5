@@ -8,17 +8,19 @@ using System.Data;
 public class PayOffShoppingCart
 {
 
-    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartService shoppingCartService)
+    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartService shoppingCartService, EmailService emailService)
     {
         _userService = userService;
         _addressService = addressService;
         _orderRepository = orderRepository;
         _shoppingCartService = shoppingCartService;
+        _emailService = emailService;
     }
     private readonly UserService _userService;
     private readonly AddressService _addressService;
     private readonly OrderRepository _orderRepository;
     private readonly ShoppingCartService _shoppingCartService;
+    private readonly EmailService _emailService;
 
 
     public bool CheckAccountExistanc(int UserID)
@@ -256,10 +258,46 @@ public class PayOffShoppingCart
 
             _orderRepository.Add(order);
 
-            AnsiConsole.MarkupLine($"[green]Bedankt voor je bestelling! Je ontvangt een bevestiging op {EmailAddress} met OrderNummer {orderNumber}.[/]");
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[grey]Druk op een toets om terug te gaan...[/]");
-            Console.ReadKey(true);
+            var emailProducts = new List<(string ProductName, int Quantity, decimal Price)>();
+            decimal emailSubtotaal = 0;
+            if (cartId != null)
+            {
+                var emailReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
+                if (emailReader != null)
+                {
+                    while (emailReader.Read())
+                    {
+                        string pName = emailReader["name"].ToString() ?? "";
+                        int qty = Convert.ToInt32(emailReader["quantity"]);
+                        decimal prc = Convert.ToDecimal(emailReader["price"]);
+                        emailProducts.Add((pName, qty, prc));
+                    }
+                    emailReader.Dispose();
+                }
+                emailSubtotaal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
+            }
+
+            decimal emailBtw = emailSubtotaal * 0.21m;
+            decimal emailVerzend = 2.00m;
+            decimal emailTotaal = emailSubtotaal + emailBtw + emailVerzend;
+
+            string addressLine = $"{Address.Street} {Address.Number}\n{Address.Postcode.ToUpper()}  {Address.city}\n{Address.Country}";
+
+            try
+            {
+                _emailService.SendOrderConfirmation(
+                    EmailAddress, Name, orderNumber, addressLine,
+                    emailProducts, emailSubtotaal, emailBtw, emailVerzend, emailTotaal);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Bevestigingsmail kon niet worden verstuurd: {Markup.Escape(ex.Message)}[/]");
+            }
+
+            _shoppingCartService.ClearCart(UserID);
+
+            var confirmationScreen = new OrderConfirmationScreen(_shoppingCartService);
+            confirmationScreen.Show(orderNumber, Name, EmailAddress, Address, PaymentMethod, UserID);
         }
         else
         {
