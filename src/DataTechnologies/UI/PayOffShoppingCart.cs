@@ -8,16 +8,19 @@ using System.Data;
 public class PayOffShoppingCart
 {
 
-    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository)
+    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartService shoppingCartService, EmailService emailService)
     {
         _userService = userService;
         _addressService = addressService;
         _orderRepository = orderRepository;
+        _shoppingCartService = shoppingCartService;
+        _emailService = emailService;
     }
     private readonly UserService _userService;
     private readonly AddressService _addressService;
-
     private readonly OrderRepository _orderRepository;
+    private readonly ShoppingCartService _shoppingCartService;
+    private readonly EmailService _emailService;
 
 
     public bool CheckAccountExistanc(int UserID)
@@ -160,7 +163,80 @@ public class PayOffShoppingCart
 
         AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
         AnsiConsole.MarkupLine($"[grey]Betaalmethode:[/] {PaymentMethod}");
+
+        AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
+        AnsiConsole.MarkupLine("[grey]Producten:[/]");
+        AnsiConsole.WriteLine();
+
+        int? cartId = _shoppingCartService.GetCartIdByUserId(UserID);
+        if (cartId != null)
+        {
+            var itemsReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
+            if (itemsReader != null)
+            {
+                var productTable = new Table()
+                    .RoundedBorder()
+                    .AddColumn("Product")
+                    .AddColumn("Aantal")
+                    .AddColumn("Prijs per stuk")
+                    .AddColumn("Subtotaal");
+
+                while (itemsReader.Read())
+                {
+                    string productName = itemsReader["name"].ToString() ?? "";
+                    int quantity = Convert.ToInt32(itemsReader["quantity"]);
+                    decimal price = Convert.ToDecimal(itemsReader["price"]);
+                    decimal rowSubtotal = quantity * price;
+
+                    productTable.AddRow(
+                        productName,
+                        quantity.ToString(),
+                        $"EUR {price:0.00}",
+                        $"EUR {rowSubtotal:0.00}");
+                }
+                itemsReader.Dispose();
+
+                AnsiConsole.Write(productTable);
+            }
+
+            decimal subtotaal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
+            decimal btw = subtotaal * 0.21m;
+            decimal verzendkosten = 2.00m;
+            decimal totaal = subtotaal + btw + verzendkosten;
+
+            AnsiConsole.WriteLine();
+            var summaryTable = new Table()
+                .NoBorder()
+                .HideHeaders()
+                .AddColumn("Label", c => c.RightAligned())
+                .AddColumn("Value", c => c.LeftAligned());
+
+            summaryTable.AddRow("[grey]Subtotaal (excl. BTW):[/]", $"EUR {subtotaal:0.00}");
+            summaryTable.AddRow("[grey]BTW (21%):[/]", $"EUR {btw:0.00}");
+            summaryTable.AddRow("[grey]Verzendkosten:[/]", $"EUR {verzendkosten:0.00}");
+            summaryTable.AddRow("[bold green]Totaalprijs:[/]", $"[bold green]EUR {totaal:0.00}[/]");
+
+            AnsiConsole.Write(summaryTable);
+        }
+
         AnsiConsole.MarkupLine("[yellow]═══════════════════════════════════[/]");
+
+        var acceptTerms = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Ik ga akkoord met de [link=https://example.com/algemene-voorwaarden]algemene voorwaarden[/]")
+                .AddChoices("Ja, ik ga akkoord", "Nee, ik ga niet akkoord"));
+
+        if (acceptTerms == "Nee, ik ga niet akkoord")
+        {
+            AnsiConsole.MarkupLine("[red]Je moet akkoord gaan met de algemene voorwaarden om je bestelling te plaatsen.[/]");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[grey]Druk op een toets om terug te gaan...[/]");
+            Console.ReadKey(true);
+            return;
+        }
+
+        AnsiConsole.MarkupLine("[green]✔ Algemene voorwaarden geaccepteerd.[/]");
+        AnsiConsole.WriteLine();
 
         var confirm = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
@@ -182,10 +258,46 @@ public class PayOffShoppingCart
 
             _orderRepository.Add(order);
 
-            AnsiConsole.MarkupLine($"[green]Bedankt voor je bestelling! Je ontvangt een bevestiging op {EmailAddress} met OrderNummer {orderNumber}.[/]");
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[grey]Druk op een toets om terug te gaan...[/]");
-            Console.ReadKey(true);
+            var emailProducts = new List<(string ProductName, int Quantity, decimal Price)>();
+            decimal emailSubtotaal = 0;
+            if (cartId != null)
+            {
+                var emailReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
+                if (emailReader != null)
+                {
+                    while (emailReader.Read())
+                    {
+                        string pName = emailReader["name"].ToString() ?? "";
+                        int qty = Convert.ToInt32(emailReader["quantity"]);
+                        decimal prc = Convert.ToDecimal(emailReader["price"]);
+                        emailProducts.Add((pName, qty, prc));
+                    }
+                    emailReader.Dispose();
+                }
+                emailSubtotaal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
+            }
+
+            decimal emailBtw = emailSubtotaal * 0.21m;
+            decimal emailVerzend = 2.00m;
+            decimal emailTotaal = emailSubtotaal + emailBtw + emailVerzend;
+
+            string addressLine = $"{Address.Street} {Address.Number}\n{Address.Postcode.ToUpper()}  {Address.city}\n{Address.Country}";
+
+            try
+            {
+                _emailService.SendOrderConfirmation(
+                    EmailAddress, Name, orderNumber, addressLine,
+                    emailProducts, emailSubtotaal, emailBtw, emailVerzend, emailTotaal);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Bevestigingsmail kon niet worden verstuurd: {Markup.Escape(ex.Message)}[/]");
+            }
+
+            _shoppingCartService.ClearCart(UserID);
+
+            var confirmationScreen = new OrderConfirmationScreen(_shoppingCartService);
+            confirmationScreen.Show(orderNumber, Name, EmailAddress, Address, PaymentMethod, UserID);
         }
         else
         {
