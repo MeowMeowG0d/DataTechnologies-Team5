@@ -75,4 +75,21 @@ public class ShoppingCartService
             _SHRepository.ClearCart(cartId.Value);
         }
     }
+
+    public int GetTotalItemsInCart(int userId)
+    {
+        int? cartId = GetCartIdByUserId(userId);
+        if (cartId == null) return 0;
+        
+        int totalCount = 0;
+        using var items = GetAllProductsFromCart(cartId.Value);
+        if (items != null)
+        {
+            while (items.Read())
+            {
+                totalCount += Convert.ToInt32(items["quantity"]);
+            }
+        }
+        return totalCount;
+    }
 }
