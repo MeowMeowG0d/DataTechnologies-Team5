@@ -97,6 +97,25 @@ public class ShoppingCartRepository
         }
     }
 
+    public void UpdateCartItemQuantity(int cartId, int productId, int newQuantity)
+    {
+        using var connection = _DBConnection.GetConnection();
+        connection.Open();
+
+        if (newQuantity <= 0)
+        {
+            using var deleteCmd = connection.CreateCommand();
+            deleteCmd.CommandText = $"DELETE FROM CartItems WHERE CartID = {cartId} AND ProductID = {productId}";
+            deleteCmd.ExecuteNonQuery();
+        }
+        else
+        {
+            using var updateCmd = connection.CreateCommand();
+            updateCmd.CommandText = $"UPDATE CartItems SET Quantity = {newQuantity} WHERE CartID = {cartId} AND ProductID = {productId}";
+            updateCmd.ExecuteNonQuery();
+        }
+    }
+
     public void ClearCart(int cartId)
     {
         using var connection = _DBConnection.GetConnection();

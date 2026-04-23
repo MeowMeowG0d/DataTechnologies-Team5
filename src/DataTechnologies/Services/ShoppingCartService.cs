@@ -32,7 +32,7 @@ public class ShoppingCartService
 
     public decimal CalculateTotalPrice(int shoppingCartId, decimal shippingPrice = 2)
     {
-        return CalculateSubTotalPrice(shoppingCartId) * 1.21m + shippingPrice;
+        return CalculateSubTotalPrice(shoppingCartId) + shippingPrice;
     }
 
     public void AddItemToCart(int productId, int userId)
@@ -56,6 +56,15 @@ public class ShoppingCartService
     public IDataReader GetAllProductsFromCart(int shoppingCartId)
     {
         return _SHRepository.GetAllProductsFromCart(shoppingCartId);
+    }
+
+    public void UpdateCartItemQuantity(int productId, int userId, int newQuantity)
+    {
+        int? cartId = _SHRepository.GetCartIdByUserId(userId);
+        if (cartId != null)
+        {
+            _SHRepository.UpdateCartItemQuantity(cartId.Value, productId, newQuantity);
+        }
     }
 
     public void ClearCart(int userId)
