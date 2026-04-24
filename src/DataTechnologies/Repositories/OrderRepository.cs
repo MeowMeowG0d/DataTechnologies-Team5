@@ -15,20 +15,20 @@ namespace DataTechnologies.Repositories
         public int Add(Orders order)
         {
             const string sql = @"
-                INSERT INTO Orders (OrderNumber, UserID, OrderDate, PaymentMethod, OrderStatus, TotalAmount)
+                INSERT INTO orders (ordernumber, userid, ""orderDate"", paymentmethod, orderstatus, totalamount)
                 VALUES (@OrderNumber, @UserID, @OrderDate, @PaymentMethod, @OrderStatus, @TotalAmount)
-                RETURNING OrderID;";
+                RETURNING orderid;";
 
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
             using var cmd = new NpgsqlCommand(sql, conn);
 
-            cmd.Parameters.AddWithValue("OrderNumber",   order.OrderNumber);
-            cmd.Parameters.AddWithValue("UserID",        order.UserID);
+            cmd.Parameters.AddWithValue("OrderNumber", order.OrderNumber);
+            cmd.Parameters.AddWithValue("UserID", order.UserID);
             cmd.Parameters.AddWithValue("OrderDate", order.OrderDate);
             cmd.Parameters.AddWithValue("PaymentMethod", order.PaymentMethod);
-            cmd.Parameters.AddWithValue("OrderStatus",   order.OrderStatus);
-            cmd.Parameters.AddWithValue("TotalAmount",   order.TotalAmount);
+            cmd.Parameters.AddWithValue("OrderStatus", order.OrderStatus);
+            cmd.Parameters.AddWithValue("TotalAmount", order.TotalAmount);
 
             return (int)cmd.ExecuteScalar()!;
         }
@@ -75,7 +75,7 @@ namespace DataTechnologies.Repositories
             using var cmd = new NpgsqlCommand(sql, conn);
 
             cmd.Parameters.AddWithValue("OrderStatus", newStatus);
-            cmd.Parameters.AddWithValue("Id",          orderId);
+            cmd.Parameters.AddWithValue("Id", orderId);
 
             return cmd.ExecuteNonQuery() > 0;
         }
@@ -94,13 +94,13 @@ namespace DataTechnologies.Repositories
 
         private static Orders MapOrder(NpgsqlDataReader r) => new()
         {
-            OrderID       = r.GetInt32(r.GetOrdinal("orderid")),
-            OrderNumber   = ReadString(r, "ordernumber"),
-            UserID        = r.GetInt32(r.GetOrdinal("userid")),
+            OrderID = r.GetInt32(r.GetOrdinal("orderid")),
+            OrderNumber = ReadString(r, "ordernumber"),
+            UserID = r.GetInt32(r.GetOrdinal("userid")),
             OrderDate = r.GetDateTime(r.GetOrdinal("orderdate")),
             PaymentMethod = ReadString(r, "paymentmethod"),
-            OrderStatus   = ReadString(r, "orderstatus"),
-            TotalAmount   = r.GetFloat(r.GetOrdinal("totalamount")),
+            OrderStatus = ReadString(r, "orderstatus"),
+            TotalAmount = r.GetFloat(r.GetOrdinal("totalamount")),
         };
 
         private static string ReadString(NpgsqlDataReader reader, string columnName)
