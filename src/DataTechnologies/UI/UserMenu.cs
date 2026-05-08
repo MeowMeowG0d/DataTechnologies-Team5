@@ -6,7 +6,26 @@ namespace DataTechnologies.UI;
 
 public static class UserMenu
 {
-    public static void ShowUserDemo(UserService userService)
+    public static void HandleLogin(UserService userService, AppSession session)
+    {
+        var email = AnsiConsole.Ask<string>("Enter email:");
+        var password = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter password:").PromptStyle("red").Secret());
+
+        if (userService.Authenticate(email, password))
+        {
+            var user = userService.GetUserByEmail(email);
+            session.Login(user!);
+            AnsiConsole.MarkupLine($"[green]Welcome, {user!.Name}![/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[red]Login failed. Invalid email or password.[/]");
+        }
+    }
+
+    // Added session parameter
+    public static void ShowUserDemo(UserService userService, AppSession session)
     {
         var userOption = AppMenuView.ShowUserDemoMenu();
 
@@ -37,8 +56,13 @@ public static class UserMenu
                     .PromptStyle("red")
                     .Secret());
 
+            // Updated to also write to session
             if (userService.Authenticate(email, password))
+            {
+                var user = userService.GetUserByEmail(email);
+                session.Login(user!);
                 AnsiConsole.MarkupLine("[green]Login successful![/]");
+            }
             else
                 AnsiConsole.MarkupLine("[red]Login failed. Invalid email or password.[/]");
         }

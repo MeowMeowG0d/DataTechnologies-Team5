@@ -24,8 +24,14 @@ namespace DataTechnologies.UI
         public const string InsertItemToCart = "Add item to cart";
         public const string Back = "Back";
 
-        public static IReadOnlyList<string> GetMainMenuOptions()
+        public const string Login  = "Login";
+        public const string Logout = "Logout";
+
+        public static IReadOnlyList<string> GetMainMenuOptions(AppSession session)
         {
+            if (!session.IsLoggedIn)
+                return new[] { Login, Exit };
+
             return new[]
             {
                 RunDemo,
@@ -33,6 +39,7 @@ namespace DataTechnologies.UI
                 TestDatabaseConnection,
                 InitializeDatabaseTables,
                 InsertTestData,
+                Logout,
                 Exit
             };
         }
@@ -83,10 +90,8 @@ namespace DataTechnologies.UI
             AnsiConsole.WriteLine();
         }
 
-        public static string ShowMainMenu()
-        {
-            return AnsiConsole.Prompt(CreateSelectionPrompt("Choose an action", MenuOptions.GetMainMenuOptions()));
-        }
+        public static string ShowMainMenu(AppSession session) =>
+            AnsiConsole.Prompt(CreateSelectionPrompt("Choose an action", MenuOptions.GetMainMenuOptions(session)));
 
         public static string ShowDemoMenu()
         {
