@@ -1,8 +1,12 @@
 using Npgsql;
 using DataTechnologies.Data;
+using DataTechnologies.Models;
+using System.Collections.Generic;
 
-public class ProductRepository
+namespace DataTechnologies.Repositories
 {
+    public class ProductRepository : IProductRepository
+    {
     private readonly string _connectionString;
 
     public ProductRepository()
@@ -177,4 +181,5 @@ public class ProductRepository
     };
 
 
+    }
 }

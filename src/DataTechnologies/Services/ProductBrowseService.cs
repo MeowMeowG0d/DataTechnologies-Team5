@@ -4,9 +4,9 @@ namespace DataTechnologies.Services
 {
     public class ProductBrowseService
     {
-        private readonly ProductRepository _productRepository;
+        private readonly IProductRepository _productRepository;
 
-        public ProductBrowseService(ProductRepository productRepository)
+        public ProductBrowseService(IProductRepository productRepository)
         {
             _productRepository = productRepository;
         }
