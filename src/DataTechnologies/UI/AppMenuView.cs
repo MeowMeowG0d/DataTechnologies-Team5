@@ -29,8 +29,8 @@ namespace DataTechnologies.UI
 
         public static IReadOnlyList<string> GetMainMenuOptions(AppSession session)
         {
-            if (!session.IsLoggedIn)
-                return new[] { Login, Exit };
+        if (!session.IsLoggedIn)
+            return new[] { Login, InitializeDatabaseTables, InsertTestData, Exit };
 
             return new[]
             {
