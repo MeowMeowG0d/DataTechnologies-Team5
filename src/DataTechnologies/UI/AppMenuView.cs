@@ -24,13 +24,13 @@ namespace DataTechnologies.UI
         public const string InsertItemToCart = "Add item to cart";
         public const string Back = "Back";
 
-        public const string Login  = "Login";
+        public const string Login = "Login";
         public const string Logout = "Logout";
 
         public static IReadOnlyList<string> GetMainMenuOptions(AppSession session)
         {
-        if (!session.IsLoggedIn)
-            return new[] { Login, InitializeDatabaseTables, InsertTestData, Exit };
+            if (!session.IsLoggedIn)
+                return new[] { Login, RegisterUser, InitializeDatabaseTables, InsertTestData, Exit };
 
             return new[]
             {
