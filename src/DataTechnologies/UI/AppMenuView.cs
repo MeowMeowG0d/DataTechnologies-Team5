@@ -12,13 +12,14 @@ namespace DataTechnologies.UI
         public const string Exit = "Exit";
 
         public const string ShowAvailableProducts = "Show available products";
-        public const string User = "User options";
+        public const string Account = "Account";
 
         public const string RegisterUser = "Register user";
-        public const string LoginUser = "Login";
         public const string UpdateUser = "Update user";
         public const string DeleteUser = "Delete user";
         public const string ShowAllUsers = "Show all users";
+        public const string MyOrders = "My orders";
+        public const string EditUser = "Edit user";
 
         public const string InitializeNow = "Initialize now";
         public const string InsertItemToCart = "Add item to cart";
@@ -49,22 +50,22 @@ namespace DataTechnologies.UI
             return new[]
             {
                 ShowAvailableProducts,
-                User,
+                Account,
                 Back
             };
         }
 
-        public static IReadOnlyList<string> GetUserDemoMenuOptions()
+        public static IReadOnlyList<string> GetAccountMenuOptions(AppSession session)
         {
-            return new[]
-            {
-                RegisterUser,
-                LoginUser,
-                UpdateUser,
-                DeleteUser,
-                ShowAllUsers,
-                Back
-            };
+            if (!session.IsLoggedIn)
+                return new[] { Login, RegisterUser, Back };
+
+            return new[] { MyOrders, UpdateUser, DeleteUser, ShowAllUsers, Logout, Back };
+        }
+
+        public static IReadOnlyList<string> GetAdminMenuOptions()
+        {
+            return new[] { ShowAllUsers, EditUser, DeleteUser, Back };
         }
 
         public static IReadOnlyList<string> GetInitializeMenuOptions()
@@ -93,25 +94,23 @@ namespace DataTechnologies.UI
         public static string ShowMainMenu(AppSession session) =>
             AnsiConsole.Prompt(CreateSelectionPrompt("Choose an action", MenuOptions.GetMainMenuOptions(session)));
 
-        public static string ShowDemoMenu()
-        {
-            return AnsiConsole.Prompt(CreateSelectionPrompt("Demo options", MenuOptions.GetDemoMenuOptions()));
-        }
+        public static string ShowDemoMenu() =>
+            AnsiConsole.Prompt(CreateSelectionPrompt("Demo options", MenuOptions.GetDemoMenuOptions()));
 
-        public static string ShowInitializeMenu()
-        {
-            return AnsiConsole.Prompt(CreateSelectionPrompt("Initialize options", MenuOptions.GetInitializeMenuOptions()));
-        }
+        public static string ShowAccountMenu(AppSession session) =>
+            AnsiConsole.Prompt(CreateSelectionPrompt("Account options", MenuOptions.GetAccountMenuOptions(session)));
 
-        public static string ShowUserDemoMenu()
-        {
-            return AnsiConsole.Prompt(CreateSelectionPrompt("User demo options", MenuOptions.GetUserDemoMenuOptions()));
-        }
+        public static string ShowAdminMenu() =>
+            AnsiConsole.Prompt(CreateSelectionPrompt("Admin panel", MenuOptions.GetAdminMenuOptions()));
+
+        public static string ShowInitializeMenu() =>
+            AnsiConsole.Prompt(CreateSelectionPrompt("Initialize options", MenuOptions.GetInitializeMenuOptions()));
 
         private static SelectionPrompt<string> CreateSelectionPrompt(string title, IEnumerable<string> options)
         {
             return new SelectionPrompt<string>()
                 .Title(title)
+                .PageSize(15)
                 .AddChoices(options);
         }
     }

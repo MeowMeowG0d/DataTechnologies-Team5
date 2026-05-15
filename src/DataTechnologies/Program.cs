@@ -110,7 +110,7 @@ while (!shouldExit)
 					productOverviewScreen.ShowAvailableProducts();
 				}
 
-				else if (demoOption == MenuOptions.User)
+				else if (demoOption == MenuOptions.Account)
 				{
 					var dbConnection = new DBConnection();
 					var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);

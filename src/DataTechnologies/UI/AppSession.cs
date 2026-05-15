@@ -6,6 +6,7 @@ namespace DataTechnologies.UI
     {
         public bool IsLoggedIn => CurrentUser != null;
         public User? CurrentUser { get; private set; }
+        
         public int UserId => CurrentUser?.UserId ?? 0;
 
         public void Login(User user) => CurrentUser = user;

@@ -24,10 +24,9 @@ public static class UserMenu
         }
     }
 
-    // Added session parameter
     public static void ShowUserDemo(UserService userService, AppSession session)
     {
-        var userOption = AppMenuView.ShowUserDemoMenu();
+        var userOption = AppMenuView.ShowAccountMenu(session); // updated
 
         if (userOption == MenuOptions.RegisterUser)
         {
@@ -48,7 +47,7 @@ public static class UserMenu
             AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
             DisplayUsers(userService.GetAllUsers());
         }
-        else if (userOption == MenuOptions.LoginUser)
+        else if (userOption == MenuOptions.Login) // was LoginUser
         {
             var email = AnsiConsole.Ask<string>("Enter email:");
             var password = AnsiConsole.Prompt(
@@ -56,7 +55,6 @@ public static class UserMenu
                     .PromptStyle("red")
                     .Secret());
 
-            // Updated to also write to session
             if (userService.Authenticate(email, password))
             {
                 var user = userService.GetUserByEmail(email);
@@ -101,22 +99,76 @@ public static class UserMenu
 
             DisplayUsers(userService.GetAllUsers());
         }
-        else if (userOption == MenuOptions.DeleteUser)
+        else if (userOption == MenuOptions.Logout)
         {
-            DisplayUsers(userService.GetAllUsers());
-            
-            var userId = AnsiConsole.Ask<int>("Enter user ID to delete:");
-
-            if (userService.DeleteUser(userId))
-                AnsiConsole.MarkupLine("[green]User deleted successfully![/]");
-            else
-                AnsiConsole.MarkupLine("[red]Failed to delete user. User may not exist.[/]");
-
-            DisplayUsers(userService.GetAllUsers());
+            session.Logout();
+            AnsiConsole.MarkupLine("[green]Logged out successfully![/]");
+        }
+        else if (userOption == MenuOptions.MyOrders)
+        {
+            // hook up order history here later
+            AnsiConsole.MarkupLine("[yellow]Order history coming soon.[/]");
         }
         else if (userOption == MenuOptions.ShowAllUsers)
         {
             DisplayUsers(userService.GetAllUsers());
+        }
+        else if (userOption == MenuOptions.DeleteUser)
+        {
+            DisplayUsers(userService.GetAllUsers());
+
+            var userId = AnsiConsole.Ask<int>("Enter user ID to delete:");
+
+            try
+            {
+                if (userService.DeleteUser(userId))
+                    AnsiConsole.MarkupLine("[green]User deleted successfully![/]");
+                else
+                    AnsiConsole.MarkupLine("[red]Failed to delete user. User may not exist.[/]");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
+            }
+
+            DisplayUsers(userService.GetAllUsers());
+        }
+
+        else if (userOption == MenuOptions.MyOrders)
+        {
+            try
+            {
+                var orders = userService.GetPreviousOrders(session.UserId);
+
+                if (orders.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No previous orders found.[/]");
+                    return;
+                }
+
+                var ordersTable = new Table()
+                    .RoundedBorder()
+                    .AddColumn("OrderID")
+                    .AddColumn("OrderNumber")
+                    .AddColumn("Payment Method")
+                    .AddColumn("Status")
+                    .AddColumn("Total");
+
+                foreach (var order in orders)
+                    ordersTable.AddRow(
+                        order.OrderID.ToString(),
+                        order.OrderNumber,
+                        order.PaymentMethod,
+                        order.OrderStatus,
+                        $"€{order.TotalAmount:F2}"
+                    );
+
+                AnsiConsole.Write(ordersTable);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Error loading orders: {ex.Message}[/]");
+            }
         }
     }
 
