@@ -110,6 +110,34 @@ public class UserRepository
         return null;
     }
 
+    public List<Orders> GetPreviousOrders(int userId)
+    {
+        const string sql = @"
+            SELECT OrderID, OrderNumber, UserID, PaymentMethod, OrderStatus, TotalAmount
+            FROM Orders
+            WHERE UserID = @UserId;";
+
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@UserId", userId);
+
+        using var reader = cmd.ExecuteReader();
+        var orders = new List<Orders>();
+        while (reader.Read())
+            orders.Add(new Orders
+            {
+                OrderID = reader.GetInt32(reader.GetOrdinal("OrderID")),
+                OrderNumber = reader.GetString(reader.GetOrdinal("OrderNumber")),
+                UserID = reader.GetInt32(reader.GetOrdinal("UserID")),
+                PaymentMethod = reader.GetString(reader.GetOrdinal("PaymentMethod")),
+                OrderStatus = reader.GetString(reader.GetOrdinal("OrderStatus")),
+                TotalAmount = reader.GetFloat(reader.GetOrdinal("TotalAmount"))
+            });
+
+        return orders;
+    }
+
     public List<User> GetAll()
     {
         const string sql = "SELECT * FROM Users;";

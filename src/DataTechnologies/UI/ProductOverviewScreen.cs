@@ -20,15 +20,16 @@ public class ProductOverviewScreen
     private readonly UserService _userService;
     private readonly PayOffShoppingCart _payOffShoppingCart;
     private readonly AddressService _addressService;
-    private const int TEMPUSERID = 1;
+    private readonly AppSession _session;
 
-    public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService)
+    public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService, AppSession session)
     {
         _productBrowseService = productBrowseService;
         _shoppingCartService = shoppingCartService;
         _userService = userService;
         _payOffShoppingCart = payOffShoppingCart;
         _addressService = addressService;
+        _session = session;
     }
 
     public void ShowAvailableProducts()
@@ -174,7 +175,17 @@ public class ProductOverviewScreen
 
             if (selectedOption == ViewCart)
             {
-                var cartScreen = new ShoppingCartScreen(_shoppingCartService, TEMPUSERID, _userService, _payOffShoppingCart, _addressService);
+                if (!_session.IsLoggedIn)
+                {
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om de winkelwagen te bekijken.[/]");
+                    AnsiConsole.MarkupLine("[grey]Druk op een toets om door te gaan...[/]");
+                    Console.ReadKey(true);
+                    AnsiConsole.Clear();
+                    ShowAvailableProducts();
+                    return;
+                }
+
+                var cartScreen = new ShoppingCartScreen(_shoppingCartService, _session.UserId, _userService, _payOffShoppingCart, _addressService);
                 cartScreen.ShowCartOverview();
                 AnsiConsole.Clear();
                 selectedProductIndex = -1;
@@ -201,8 +212,15 @@ public class ProductOverviewScreen
 
             if (action == "Voeg toe aan winkelwagen")
             {
-                _shoppingCartService.AddItemToCart(selectedProduct.ProductID, TEMPUSERID);
-                AnsiConsole.MarkupLine($"[green]✓ {selectedProduct.Name} succesvol toegevoegd aan de winkelwagen![/]");
+                if (!_session.IsLoggedIn)
+                {
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om producten toe te voegen.[/]");
+                }
+                else
+                {
+                    _shoppingCartService.AddItemToCart(selectedProduct.ProductID, _session.UserId);
+                    AnsiConsole.MarkupLine($"[green]✓ {selectedProduct.Name} succesvol toegevoegd aan de winkelwagen![/]");
+                }
                 AnsiConsole.WriteLine("Druk op een knop om door te gaan...");
                 Console.ReadKey(true);
             }
