@@ -6,16 +6,35 @@ namespace DataTechnologies.UI;
 
 public static class UserMenu
 {
-    public static void ShowUserDemo(UserService userService)
+    public static void HandleLogin(UserService userService, AppSession session)
     {
-        var userOption = AppMenuView.ShowUserDemoMenu();
+        var email = AnsiConsole.Ask<string>("Enter email:");
+        var password = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter password:").PromptStyle("red").Secret());
+
+        if (userService.Authenticate(email, password))
+        {
+            var user = userService.GetUserByEmail(email);
+            session.Login(user!);
+            AnsiConsole.MarkupLine($"[green]Welcome, {user!.Name}![/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[red]Login failed. Invalid email or password.[/]");
+        }
+    }
+
+    public static void ShowUserDemo(UserService userService, AppSession session)
+    {
+        var userOption = AppMenuView.ShowAccountMenu(session);
 
         if (userOption == MenuOptions.RegisterUser)
         {
             var email = AnsiConsole.Ask<string>("Enter email:");
             var name = AnsiConsole.Ask<string>("Enter name:");
             var password = AnsiConsole.Prompt(
-                new TextPrompt<string>("Enter password:"));
+                new TextPrompt<string>("Enter password:")
+                    .Secret());
 
             var user = new User
             {
@@ -29,7 +48,7 @@ public static class UserMenu
             AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
             DisplayUsers(userService.GetAllUsers());
         }
-        else if (userOption == MenuOptions.LoginUser)
+        else if (userOption == MenuOptions.Login)
         {
             var email = AnsiConsole.Ask<string>("Enter email:");
             var password = AnsiConsole.Prompt(
@@ -38,7 +57,11 @@ public static class UserMenu
                     .Secret());
 
             if (userService.Authenticate(email, password))
+            {
+                var user = userService.GetUserByEmail(email);
+                session.Login(user!);
                 AnsiConsole.MarkupLine("[green]Login successful![/]");
+            }
             else
                 AnsiConsole.MarkupLine("[red]Login failed. Invalid email or password.[/]");
         }
@@ -58,6 +81,7 @@ public static class UserMenu
             var name = AnsiConsole.Ask<string>($"Enter new name (current: {existingUser.Name}):", existingUser.Name);
             var password = AnsiConsole.Prompt(
                 new TextPrompt<string>("Enter new password (leave blank to keep current):")
+                    .Secret()
                     .PromptStyle("red")
                     .AllowEmpty());
 
@@ -77,22 +101,70 @@ public static class UserMenu
 
             DisplayUsers(userService.GetAllUsers());
         }
-        else if (userOption == MenuOptions.DeleteUser)
+        else if (userOption == MenuOptions.Logout)
         {
-            DisplayUsers(userService.GetAllUsers());
-            
-            var userId = AnsiConsole.Ask<int>("Enter user ID to delete:");
-
-            if (userService.DeleteUser(userId))
-                AnsiConsole.MarkupLine("[green]User deleted successfully![/]");
-            else
-                AnsiConsole.MarkupLine("[red]Failed to delete user. User may not exist.[/]");
-
-            DisplayUsers(userService.GetAllUsers());
+            session.Logout();
+            AnsiConsole.MarkupLine("[green]Logged out successfully![/]");
         }
         else if (userOption == MenuOptions.ShowAllUsers)
         {
             DisplayUsers(userService.GetAllUsers());
+        }
+        else if (userOption == MenuOptions.DeleteUser)
+        {
+            DisplayUsers(userService.GetAllUsers());
+
+            var userId = AnsiConsole.Ask<int>("Enter user ID to delete:");
+
+            try
+            {
+                if (userService.DeleteUser(userId))
+                    AnsiConsole.MarkupLine("[green]User deleted successfully![/]");
+                else
+                    AnsiConsole.MarkupLine("[red]Failed to delete user. User may not exist.[/]");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
+            }
+
+            DisplayUsers(userService.GetAllUsers());
+        }
+        else if (userOption == MenuOptions.MyOrders)
+        {
+            try
+            {
+                var orders = userService.GetPreviousOrders(session.UserId);
+
+                if (orders.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No previous orders found.[/]");
+                    return;
+                }
+
+                var ordersTable = new Table()
+                    .RoundedBorder()
+                    .AddColumn("OrderID")
+                    .AddColumn("OrderNumber")
+                    .AddColumn("Payment Method")
+                    .AddColumn("Status")
+                    .AddColumn("Total");
+
+                foreach (var order in orders)
+                    ordersTable.AddRow(
+                        order.OrderID.ToString(),
+                        order.OrderNumber,
+                        order.PaymentMethod,
+                        order.OrderStatus,
+                        $"€{order.TotalAmount:F2}"
+                    );
+
+                AnsiConsole.Write(ordersTable);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Error loading orders: {ex.Message}[/]");
+            }
         }
     }
 
