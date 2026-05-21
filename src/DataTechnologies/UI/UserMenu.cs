@@ -26,14 +26,15 @@ public static class UserMenu
 
     public static void ShowUserDemo(UserService userService, AppSession session)
     {
-        var userOption = AppMenuView.ShowAccountMenu(session); // updated
+        var userOption = AppMenuView.ShowAccountMenu(session);
 
         if (userOption == MenuOptions.RegisterUser)
         {
             var email = AnsiConsole.Ask<string>("Enter email:");
             var name = AnsiConsole.Ask<string>("Enter name:");
             var password = AnsiConsole.Prompt(
-                new TextPrompt<string>("Enter password:"));
+                new TextPrompt<string>("Enter password:")
+                    .Secret());
 
             var user = new User
             {
@@ -47,7 +48,7 @@ public static class UserMenu
             AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
             DisplayUsers(userService.GetAllUsers());
         }
-        else if (userOption == MenuOptions.Login) // was LoginUser
+        else if (userOption == MenuOptions.Login)
         {
             var email = AnsiConsole.Ask<string>("Enter email:");
             var password = AnsiConsole.Prompt(
@@ -80,6 +81,7 @@ public static class UserMenu
             var name = AnsiConsole.Ask<string>($"Enter new name (current: {existingUser.Name}):", existingUser.Name);
             var password = AnsiConsole.Prompt(
                 new TextPrompt<string>("Enter new password (leave blank to keep current):")
+                    .Secret()
                     .PromptStyle("red")
                     .AllowEmpty());
 
@@ -103,11 +105,6 @@ public static class UserMenu
         {
             session.Logout();
             AnsiConsole.MarkupLine("[green]Logged out successfully![/]");
-        }
-        else if (userOption == MenuOptions.MyOrders)
-        {
-            // hook up order history here later
-            AnsiConsole.MarkupLine("[yellow]Order history coming soon.[/]");
         }
         else if (userOption == MenuOptions.ShowAllUsers)
         {
@@ -133,7 +130,6 @@ public static class UserMenu
 
             DisplayUsers(userService.GetAllUsers());
         }
-
         else if (userOption == MenuOptions.MyOrders)
         {
             try
