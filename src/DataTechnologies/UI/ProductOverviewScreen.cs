@@ -173,7 +173,7 @@ public class ProductOverviewScreen
                 continue;
             }
 
-            if (selectedOption == ViewCart)
+            if (selectedOption != null && selectedOption.StartsWith(ViewCart))
             {
                 if (!_session.IsLoggedIn)
                 {
@@ -232,8 +232,11 @@ public class ProductOverviewScreen
         }
     }
 
-    private static string PromptFilterMenuWithNavigation(int selectedProductIndex, List<Product> products, int? activeCategoryId, string activeBrand, int? activeMinimumRating, string searchText, IReadOnlyList<Categories> categoryOptions)
+    private string PromptFilterMenuWithNavigation(int selectedProductIndex, List<Product> products, int? activeCategoryId, string activeBrand, int? activeMinimumRating, string searchText, IReadOnlyList<Categories> categoryOptions)
     {
+        int totalItems = _session.IsLoggedIn ? _shoppingCartService.GetTotalItemsInCart(_session.UserId) : 0;
+        string ViewCartWithTotal = $"{ViewCart} ({totalItems})"; 
+
         var menuOptions = new List<string>
         {
             ChooseCategory,
@@ -241,7 +244,7 @@ public class ProductOverviewScreen
             ChooseRating,
             SearchProducts,
             ClearFilters,
-            ViewCart,
+            ViewCartWithTotal,
             BackToMenu
         };
 

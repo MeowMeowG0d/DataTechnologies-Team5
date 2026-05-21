@@ -9,6 +9,7 @@ namespace DataTechnologies.UI
     public class ShoppingCartScreen
     {
         private const string Checkout = "Afrekenen";
+        private const string ChangeCart = "Pas winkelwagen aan";
         private const string BackToMenu = "Terug naar producten";
         private readonly ShoppingCartService _shoppingCartService;
         private readonly AddressService _addressService;
@@ -89,9 +90,9 @@ namespace DataTechnologies.UI
 
             AnsiConsole.Write(table);
 
-            decimal totalExBTW = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
+            decimal subtotal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
             decimal totalIncBTWAndShipping = _shoppingCartService.CalculateTotalPrice(cartId.Value);
-            decimal calculatedBTW = totalExBTW * 0.21m;
+            decimal calculatedBTW = subtotal - (subtotal / 1.21m);
 
             var summaryTable = new Table()
                 .NoBorder()
@@ -99,8 +100,8 @@ namespace DataTechnologies.UI
                 .AddColumn("Label", c => c.RightAligned())
                 .AddColumn("Value", c => c.LeftAligned());
 
-            summaryTable.AddRow("[grey]Subtotaal (excl. BTW):[/]", $"EUR {totalExBTW:0.00}");
-            summaryTable.AddRow("[grey]BTW (21%):[/]", $"EUR {calculatedBTW:0.00}");
+            summaryTable.AddRow("[grey]Subtotaal (incl. BTW):[/]", $"EUR {subtotal:0.00}");
+            summaryTable.AddRow("[grey]Daarvan BTW (21%):[/]", $"EUR {calculatedBTW:0.00}");
             summaryTable.AddRow("[grey]Verzendkosten:[/]", "EUR 2.00");
             summaryTable.AddRow("[bold green]Totaal te betalen:[/]", $"[bold green]EUR {totalIncBTWAndShipping:0.00}[/]");
 
@@ -111,6 +112,139 @@ namespace DataTechnologies.UI
             PromptActions(true, totalIncBTWAndShipping);
         }
 
+        public void ChangeCartScreen()
+        {
+            //empty cart safety check
+            int? cartId = _shoppingCartService.GetCartIdByUserId(_userId);
+            if (cartId == null)
+            {
+                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
+                System.Threading.Thread.Sleep(1500); 
+                return;
+            }
+
+            // Fetch current items once
+            var items = new List<CartItemFullInfo>();
+            var itemsReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
+            if (itemsReader != null)
+            {
+                while (itemsReader.Read())
+                {
+                    //if quan 0 skip
+                    int quantity = Convert.ToInt32(itemsReader["quantity"]);
+                    if (quantity <= 0) continue;
+                    
+                    items.Add(new CartItemFullInfo {
+                        ProductId = Convert.ToInt32(itemsReader["productid"]),
+                        ProductName = itemsReader["name"].ToString() ?? "",
+                        Quantity = quantity,
+                        Price = Convert.ToDecimal(itemsReader["price"])
+                    });
+                }
+                itemsReader.Dispose();
+            }
+
+            //empty cart safety check
+            if (items.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
+                System.Threading.Thread.Sleep(1500);
+                return; 
+            }
+
+            int selectedIndex = 0;
+            bool editingCart = true;
+            
+            while (editingCart)
+            {
+                if (selectedIndex >= items.Count) selectedIndex = items.Count - 1;
+                if (selectedIndex < 0) selectedIndex = 0;
+
+                AnsiConsole.Clear();
+                AnsiConsole.Write(new Spectre.Console.Rule("[yellow]Pas Winkelwagen Aan (ESC om op te slaan en terug te gaan)[/]"));
+                AnsiConsole.WriteLine();
+
+                var table = new Table()
+                    .RoundedBorder()
+                    .AddColumn("ID")
+                    .AddColumn("Product")
+                    .AddColumn("Aantal")
+                    .AddColumn("Prijs per stuk")
+                    .AddColumn("Subtotaal");
+
+                decimal subtotal = 0;
+
+                for (int i = 0; i < items.Count; i++)
+                {
+                    var item = items[i];
+                    decimal rowSubtotal = item.Quantity * item.Price;
+                    subtotal += rowSubtotal;
+
+                    string formatting = i == selectedIndex ? "[black on white]" : "";
+                    string endFormatting = i == selectedIndex ? "[/]" : "";
+
+                    table.AddRow(
+                        $"{formatting}{item.ProductId}{endFormatting}",
+                        $"{formatting}{item.ProductName}{endFormatting}",
+                        $"{formatting}< {item.Quantity} >{endFormatting}",
+                        $"{formatting}EUR {item.Price:0.00}{endFormatting}",
+                        $"{formatting}EUR {rowSubtotal:0.00}{endFormatting}");
+                }
+
+                AnsiConsole.Write(table);
+
+                //recal price
+                decimal calculatedBTW = subtotal - (subtotal / 1.21m);
+                decimal totalIncBTWAndShipping = subtotal > 0 ? subtotal + 2.00m : 0;
+
+                var summaryTable = new Table()
+                    .NoBorder()
+                    .HideHeaders()
+                    .AddColumn("Label", c => c.RightAligned())
+                    .AddColumn("Value", c => c.LeftAligned());
+
+                summaryTable.AddRow("[grey]Subtotaal (incl. BTW):[/]", $"EUR {subtotal:0.00}");
+                summaryTable.AddRow("[grey]Daarvan BTW (21%):[/]", $"EUR {calculatedBTW:0.00}");
+                summaryTable.AddRow("[grey]Verzendkosten:[/]", "EUR 2.00");
+                summaryTable.AddRow("[bold green]Totaal te betalen:[/]", $"[bold green]EUR {totalIncBTWAndShipping:0.00}[/]");
+
+                AnsiConsole.WriteLine();
+                AnsiConsole.Write(summaryTable);
+                AnsiConsole.MarkupLine("[grey]\nGebruik Pijl Omhoog/Omlaag om te selecteren, Links/Rechts om het aantal aan te passen, en ESC om op te slaan en terug te gaan.[/]");
+
+                //Cart controls
+                var key = Console.ReadKey(true).Key;
+                switch (key)
+                {
+                    case ConsoleKey.Escape:
+                        // Save all changes when ESC is pressed
+                        foreach (var item in items)
+                        {
+                            _shoppingCartService.UpdateCartItemQuantity(item.ProductId, _userId, item.Quantity);
+                        }
+                        editingCart = false;
+                        break;
+                    case ConsoleKey.UpArrow:
+                        selectedIndex--;
+                        break;
+                    case ConsoleKey.DownArrow:
+                        selectedIndex++;
+                        break;
+                    case ConsoleKey.LeftArrow:
+                        if (items[selectedIndex].Quantity > 0)
+                        {
+                            items[selectedIndex].Quantity--;
+                        }
+                        break;
+                    case ConsoleKey.RightArrow:
+                        items[selectedIndex].Quantity++;
+                        break;
+                }
+            }
+
+            ShowCartOverview();
+        }
+
         private void PromptActions(bool showCheckout = false, decimal totalAmount = 0)
         {
             var actions = new List<string>();
@@ -118,6 +252,7 @@ namespace DataTechnologies.UI
             if (showCheckout)
             {
                 actions.Add(Checkout);
+                actions.Add(ChangeCart);
             }
             actions.Add(BackToMenu);
 
@@ -146,6 +281,10 @@ namespace DataTechnologies.UI
                     var user = _userService.GetUserById(_userId);
                     _payOffShoppingCart.DeliveryDetails(_userId, user.Name, user.Email, totalAmount);
                 }
+            }
+            if (action == ChangeCart)
+            {
+                ChangeCartScreen();
             }
             else if (action == BackToMenu)
             {
