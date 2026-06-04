@@ -9,7 +9,7 @@ namespace DataTechnologies.Data
 
         public RedisConnection()
         {
-            _connectionString = "redis://team5:pRnj7a4Gh@145.24.237.123:8379"; //should be env lol
+            _connectionString = "145.24.237.123:8379,password=pRnj7a4Gh,user=team5"; //should be env lol
             _redis = ConnectionMultiplexer.Connect(_connectionString);
         }
 

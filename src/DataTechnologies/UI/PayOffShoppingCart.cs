@@ -1,14 +1,18 @@
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
-using Microsoft.VisualBasic;
 using Spectre.Console;
+using System;
 using System.Collections.Generic;
-using System.Data;
 
 public class PayOffShoppingCart
 {
+    private readonly UserService _userService;
+    private readonly AddressService _addressService;
+    private readonly OrderRepository _orderRepository;
+    private readonly ShoppingCartServiceRedis _shoppingCartService; // Fixed Type Name alignment
+    private readonly EmailService _emailService;
 
-    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartService shoppingCartService, EmailService emailService)
+    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartServiceRedis shoppingCartService, EmailService emailService)
     {
         _userService = userService;
         _addressService = addressService;
@@ -16,23 +20,10 @@ public class PayOffShoppingCart
         _shoppingCartService = shoppingCartService;
         _emailService = emailService;
     }
-    private readonly UserService _userService;
-    private readonly AddressService _addressService;
-    private readonly OrderRepository _orderRepository;
-    private readonly ShoppingCartService _shoppingCartService;
-    private readonly EmailService _emailService;
-
 
     public bool CheckAccountExistanc(int UserID)
     {
-        if (UserID == 0)
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
+        return UserID != 0;
     }
 
     public void DeliveryDetails(int UserID, string Name, string EmailAddress, decimal totalAmount)
@@ -136,9 +127,9 @@ public class PayOffShoppingCart
     public void PaymentDetails(int UserID, string Name, string EmailAddress, Addresses Address, decimal totalAmount)
     {
         var paymentMethod = AnsiConsole.Prompt(
-        new SelectionPrompt<string>()
-        .Title("Kies je betaalmethode:")
-        .AddChoices("iDEAL", "Klarna", "Creditcard", "PayPal"));
+            new SelectionPrompt<string>()
+                .Title("Kies je betaalmethode:")
+                .AddChoices("iDEAL", "Klarna", "Creditcard", "PayPal"));
 
         AnsiConsole.MarkupLine("[yellow]Bevestiging[/]");
         AnsiConsole.MarkupLine($"[yellow]Je betaalmethode is nu {paymentMethod}[/]");
@@ -168,38 +159,31 @@ public class PayOffShoppingCart
         AnsiConsole.MarkupLine("[grey]Producten:[/]");
         AnsiConsole.WriteLine();
 
-        int? cartId = _shoppingCartService.GetCartIdByUserId(UserID);
-        if (cartId != null)
+        // Natively fetch data inside a unified list from Redis via User ID
+        var items = _shoppingCartService.GetAllProductsFromCart(UserID);
+
+        if (items != null && items.Count > 0)
         {
-            var itemsReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
-            if (itemsReader != null)
+            var productTable = new Table()
+                .RoundedBorder()
+                .AddColumn("Product")
+                .AddColumn("Aantal")
+                .AddColumn("Prijs per stuk")
+                .AddColumn("Subtotaal");
+
+            foreach (var item in items)
             {
-                var productTable = new Table()
-                    .RoundedBorder()
-                    .AddColumn("Product")
-                    .AddColumn("Aantal")
-                    .AddColumn("Prijs per stuk")
-                    .AddColumn("Subtotaal");
-
-                while (itemsReader.Read())
-                {
-                    string productName = itemsReader["name"].ToString() ?? "";
-                    int quantity = Convert.ToInt32(itemsReader["quantity"]);
-                    decimal price = Convert.ToDecimal(itemsReader["price"]);
-                    decimal rowSubtotal = quantity * price;
-
-                    productTable.AddRow(
-                        productName,
-                        quantity.ToString(),
-                        $"EUR {price:0.00}",
-                        $"EUR {rowSubtotal:0.00}");
-                }
-                itemsReader.Dispose();
-
-                AnsiConsole.Write(productTable);
+                decimal rowSubtotal = item.Quantity * item.Price;
+                productTable.AddRow(
+                    item.ProductName,
+                    item.Quantity.ToString(),
+                    $"EUR {item.Price:0.00}",
+                    $"EUR {rowSubtotal:0.00}");
             }
 
-            decimal subtotaal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
+            AnsiConsole.Write(productTable);
+
+            decimal subtotaal = _shoppingCartService.CalculateSubTotalPrice(UserID);
             decimal btw = subtotaal * 0.21m;
             decimal verzendkosten = 2.00m;
             decimal totaal = subtotaal + btw + verzendkosten;
@@ -258,25 +242,17 @@ public class PayOffShoppingCart
 
             _orderRepository.Add(order);
 
+            // Re-mapping details directly out of our memory collection instead of another database roundtrip
             var emailProducts = new List<(string ProductName, int Quantity, decimal Price)>();
-            decimal emailSubtotaal = 0;
-            if (cartId != null)
+            if (items != null)
             {
-                var emailReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
-                if (emailReader != null)
+                foreach (var item in items)
                 {
-                    while (emailReader.Read())
-                    {
-                        string pName = emailReader["name"].ToString() ?? "";
-                        int qty = Convert.ToInt32(emailReader["quantity"]);
-                        decimal prc = Convert.ToDecimal(emailReader["price"]);
-                        emailProducts.Add((pName, qty, prc));
-                    }
-                    emailReader.Dispose();
+                    emailProducts.Add((item.ProductName, item.Quantity, item.Price));
                 }
-                emailSubtotaal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
             }
 
+            decimal emailSubtotaal = _shoppingCartService.CalculateSubTotalPrice(UserID);
             decimal emailBtw = emailSubtotaal * 0.21m;
             decimal emailVerzend = 2.00m;
             decimal emailTotaal = emailSubtotaal + emailBtw + emailVerzend;
@@ -308,4 +284,3 @@ public class PayOffShoppingCart
         }
     }
 }
-
