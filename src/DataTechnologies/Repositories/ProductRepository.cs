@@ -59,24 +59,6 @@ public class ProductRepository
         return product.ProductID;
     }
 
-    public Product? GetById(int productId)
-    {
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", productId);
-        var document = _productCollection.Find(filter).FirstOrDefault();
-
-        return document == null ? null : MapProduct(document);
-    }
-
-    public List<Product> GetAll()
-    {
-        var documents = _productCollection
-            .Find(FilterDefinition<BsonDocument>.Empty)
-            .SortBy(document => document["_id"])
-            .ToList();
-
-        return documents.Select(MapProduct).ToList();
-    }
-
     public List<Product> GetAvailableProducts()
     {
         var filter = Builders<BsonDocument>.Filter.Gt("Stock", 0);
@@ -156,31 +138,6 @@ public class ProductRepository
         }
 
         return productRatings;
-    }
-
-    public bool Update(Product product)
-    {
-        if (product == null)
-        {
-            throw new ArgumentNullException(nameof(product));
-        }
-
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", product.ProductID);
-        var existing = _productCollection.Find(filter).FirstOrDefault();
-        if (existing == null)
-        {
-            return false;
-        }
-
-        var result = _productCollection.ReplaceOne(filter, ToDocument(product));
-        return result.ModifiedCount > 0;
-    }
-
-    public bool Delete(int productId)
-    {
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", productId);
-        var result = _productCollection.DeleteOne(filter);
-        return result.DeletedCount > 0;
     }
 
     private void EnsureMongoConnection()
@@ -322,3 +279,46 @@ public class ProductRepository
         return null;
     }
 }
+
+// Kan miss in de toekomst gebruikt worden... 🎁
+    // public Product? GetById(int productId)
+    // {
+    //     var filter = Builders<BsonDocument>.Filter.Eq("_id", productId);
+    //     var document = _productCollection.Find(filter).FirstOrDefault();
+
+    //     return document == null ? null : MapProduct(document);
+    // }
+
+    // public List<Product> GetAll()
+    // {
+    //     var documents = _productCollection
+    //         .Find(FilterDefinition<BsonDocument>.Empty)
+    //         .SortBy(document => document["_id"])
+    //         .ToList();
+
+    //     return documents.Select(MapProduct).ToList();
+    // }
+
+    // public bool Delete(int productId)
+    // {
+    //     var filter = Builders<BsonDocument>.Filter.Eq("_id", productId);
+    //     var result = _productCollection.DeleteOne(filter);
+    //     return result.DeletedCount > 0;
+    // }
+    // public bool Update(Product product)
+    // {
+    //     if (product == null)
+    //     {
+    //         throw new ArgumentNullException(nameof(product));
+    //     }
+
+    //     var filter = Builders<BsonDocument>.Filter.Eq("_id", product.ProductID);
+    //     var existing = _productCollection.Find(filter).FirstOrDefault();
+    //     if (existing == null)
+    //     {
+    //         return false;
+    //     }
+
+    //     var result = _productCollection.ReplaceOne(filter, ToDocument(product));
+    //     return result.ModifiedCount > 0;
+    // }
