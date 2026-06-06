@@ -1,85 +1,91 @@
 using Npgsql;
+using System.Data;
 using DataTechnologies.Data;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 public class ProductRepository
 {
-    private readonly string _connectionString;
+    private const string ProductCollectionName = "products";
+    private const string SequenceCollectionName = "counters";
+    private const string ProductSequenceName = "productid";
 
-    public ProductRepository()
+    private readonly string _sqlConnectionString;
+    private readonly IMongoCollection<BsonDocument> _productCollection;
+    private readonly IMongoDatabase _mongoDatabase;
+
+    public ProductRepository(string? sqlConnectionString)
     {
-        using var connection = new DBConnection().GetConnection();
-        _connectionString = connection.ConnectionString;
+        _sqlConnectionString = string.IsNullOrWhiteSpace(sqlConnectionString)
+            ? new DBConnection().GetConnection().ConnectionString
+            : sqlConnectionString;
+
+        (_mongoDatabase, _productCollection) = InitializeMongoStorage();
+
+        EnsureMongoConnection();
+        SeedDefaultProductsIfNeeded();
     }
 
-    public ProductRepository(string connectionString)
+    private static (IMongoDatabase MongoDatabase, IMongoCollection<BsonDocument> ProductCollection) InitializeMongoStorage()
     {
-        _connectionString = connectionString;
+        var mongoConnectionString = ResolveMongoConnectionString();
+        var mongoUrl = new MongoUrl(mongoConnectionString);
+        var databaseName = string.IsNullOrWhiteSpace(mongoUrl.DatabaseName)
+            ? "team5"
+            : mongoUrl.DatabaseName;
+
+        var mongoClient = new MongoClient(mongoConnectionString);
+        var mongoDatabase = mongoClient.GetDatabase(databaseName);
+        var productCollection = mongoDatabase.GetCollection<BsonDocument>(ProductCollectionName);
+
+        return (mongoDatabase, productCollection);
     }
 
     public int Add(Product product)
     {
-        const string sql = @"
-            INSERT INTO Product (Name, Brand, Description, Price, Stock, Specification)
-            VALUES (@Name, @Brand, @Description, @Price, @Stock, @Specification)
-            RETURNING ProductID;";
+        if (product == null)
+        {
+            throw new ArgumentNullException(nameof(product));
+        }
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = new NpgsqlCommand(sql, conn);
+        if (product.ProductID <= 0)
+        {
+            product.ProductID = GetNextProductId();
+        }
 
-        cmd.Parameters.AddWithValue("Name",          product.Name);
-        cmd.Parameters.AddWithValue("Brand",         product.Brand);
-        cmd.Parameters.AddWithValue("Description",   product.Description);
-        cmd.Parameters.AddWithValue("Price",         product.Price);
-        cmd.Parameters.AddWithValue("Stock",         product.Stock);
-        cmd.Parameters.AddWithValue("Specification", product.Specification);
+        var document = ToDocument(product);
+        _productCollection.InsertOne(document);
 
-        return (int)cmd.ExecuteScalar()!;
+        return product.ProductID;
     }
 
     public Product? GetById(int productId)
     {
-        const string sql = "SELECT * FROM Product WHERE ProductID = @Id;";
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", productId);
+        var document = _productCollection.Find(filter).FirstOrDefault();
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("Id", productId);
-
-        using var reader = cmd.ExecuteReader();
-        return reader.Read() ? MapProduct(reader) : null;
+        return document == null ? null : MapProduct(document);
     }
 
     public List<Product> GetAll()
     {
-        const string sql = "SELECT * FROM Product;";
-        var products = new List<Product>();
+        var documents = _productCollection
+            .Find(FilterDefinition<BsonDocument>.Empty)
+            .SortBy(document => document["_id"])
+            .ToList();
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = new NpgsqlCommand(sql, conn);
-        using var reader = cmd.ExecuteReader();
-
-        while (reader.Read())
-            products.Add(MapProduct(reader));
-
-        return products;
+        return documents.Select(MapProduct).ToList();
     }
 
     public List<Product> GetAvailableProducts()
     {
-        const string sql = "SELECT * FROM Product WHERE Stock > 0;";
-        var products = new List<Product>();
+        var filter = Builders<BsonDocument>.Filter.Gt("Stock", 0);
+        var documents = _productCollection
+            .Find(filter)
+            .SortBy(document => document["_id"])
+            .ToList();
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = new NpgsqlCommand(sql, conn);
-        using var reader = cmd.ExecuteReader();
-
-        while (reader.Read())
-            products.Add(MapProduct(reader));
-
-        return products;
+        return documents.Select(MapProduct).ToList();
     }
 
     public List<Categories> GetCategories()
@@ -87,7 +93,7 @@ public class ProductRepository
         const string sql = "SELECT * FROM Categories;";
         var categories = new List<Categories>();
 
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new NpgsqlConnection(_sqlConnectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
         using var reader = cmd.ExecuteReader();
@@ -109,7 +115,7 @@ public class ProductRepository
         const string sql = "SELECT * FROM ProductCategories;";
         var productCategories = new List<ProductCategories>();
 
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new NpgsqlConnection(_sqlConnectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
         using var reader = cmd.ExecuteReader();
@@ -131,7 +137,7 @@ public class ProductRepository
         const string sql = "SELECT * FROM ProductRatings;";
         var productRatings = new List<ProductRatings>();
 
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new NpgsqlConnection(_sqlConnectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
         using var reader = cmd.ExecuteReader();
@@ -154,53 +160,165 @@ public class ProductRepository
 
     public bool Update(Product product)
     {
-        const string sql = @"
-            UPDATE Product
-            SET Name          = @Name,
-                Brand         = @Brand,
-                Description   = @Description,
-                Price         = @Price,
-                Stock         = @Stock,
-                Specification = @Specification
-            WHERE ProductID  = @Id;";
+        if (product == null)
+        {
+            throw new ArgumentNullException(nameof(product));
+        }
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = new NpgsqlCommand(sql, conn);
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", product.ProductID);
+        var existing = _productCollection.Find(filter).FirstOrDefault();
+        if (existing == null)
+        {
+            return false;
+        }
 
-        cmd.Parameters.AddWithValue("Id",            product.ProductID);
-        cmd.Parameters.AddWithValue("Name",          product.Name);
-        cmd.Parameters.AddWithValue("Brand",         product.Brand);
-        cmd.Parameters.AddWithValue("Description",   product.Description);
-        cmd.Parameters.AddWithValue("Price",         product.Price);
-        cmd.Parameters.AddWithValue("Stock",         product.Stock);
-        cmd.Parameters.AddWithValue("Specification", product.Specification);
-
-        return cmd.ExecuteNonQuery() > 0;
+        var result = _productCollection.ReplaceOne(filter, ToDocument(product));
+        return result.ModifiedCount > 0;
     }
 
     public bool Delete(int productId)
     {
-        const string sql = "DELETE FROM Product WHERE ProductID = @Id;";
-
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("Id", productId);
-
-        return cmd.ExecuteNonQuery() > 0;
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", productId);
+        var result = _productCollection.DeleteOne(filter);
+        return result.DeletedCount > 0;
     }
 
-    private static Product MapProduct(NpgsqlDataReader r) => new()
+    private void EnsureMongoConnection()
     {
-        ProductID     = r.GetInt32(r.GetOrdinal("ProductID")),
-        Name          = r.GetString(r.GetOrdinal("Name")),
-        Brand         = r.GetString(r.GetOrdinal("Brand")),
-        Description   = r.GetString(r.GetOrdinal("Description")),
-        Price         = r.GetFloat(r.GetOrdinal("Price")),
-        Stock         = r.GetInt32(r.GetOrdinal("Stock")),
-        Specification = r.GetString(r.GetOrdinal("Specification")),
-    };
+        try
+        {
+            _mongoDatabase.RunCommand<BsonDocument>(new BsonDocument("ping", 1));
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("MongoDB connection failed. Check MONGODB_URI and network access.", ex);
+        }
+    }
 
+    private void SeedDefaultProductsIfNeeded()
+    {
+        if (_productCollection.CountDocuments(FilterDefinition<BsonDocument>.Empty) > 0)
+        {
+            return;
+        }
 
+        foreach (var product in GetDefaultProducts())
+        {
+            Add(product);
+        }
+    }
+
+    private List<Product> GetDefaultProducts()
+    {
+        return new List<Product>
+        {
+            new Product { Name = "Gaming Mouse X1", Brand = "LogiCore", Description = "Ergonomic gaming mouse with RGB.", Price = 49.99f, Stock = 25, Specification = "DPI up to 16000" },
+            new Product { Name = "Mechanical Keyboard K80", Brand = "KeyForge", Description = "Mechanical keyboard with blue switches.", Price = 89.95f, Stock = 18, Specification = "ANSI layout, wired USB" },
+            new Product { Name = "27-inch Monitor Pro", Brand = "ViewLine", Description = "QHD monitor for work and gaming.", Price = 229.00f, Stock = 12, Specification = "2560x1440, 144Hz" },
+            new Product { Name = "USB-C Dock D5", Brand = "PortHub", Description = "Docking station with multi-port support.", Price = 119.50f, Stock = 20, Specification = "2x HDMI, 1x Ethernet, 4x USB" },
+            new Product { Name = "Noise Cancelling Headset H2", Brand = "SoundPeak", Description = "Over-ear headset with active noise cancelling.", Price = 159.99f, Stock = 15, Specification = "Bluetooth 5.3, 30h battery" }
+        };
+    }
+
+    private int GetNextProductId()
+    {
+        var countersCollection = _mongoDatabase.GetCollection<BsonDocument>(SequenceCollectionName);
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", ProductSequenceName);
+        var update = Builders<BsonDocument>.Update.Inc("value", 1);
+        var options = new FindOneAndUpdateOptions<BsonDocument>
+        {
+            IsUpsert = true,
+            ReturnDocument = ReturnDocument.After
+        };
+
+        var sequenceDocument = countersCollection.FindOneAndUpdate(filter, update, options);
+        return sequenceDocument["value"].ToInt32();
+    }
+
+    private static BsonDocument ToDocument(Product product)
+    {
+        return new BsonDocument
+        {
+            ["_id"] = product.ProductID,
+            ["Name"] = product.Name ?? string.Empty,
+            ["Brand"] = product.Brand ?? string.Empty,
+            ["Description"] = product.Description ?? string.Empty,
+            ["Price"] = (double)product.Price,
+            ["Stock"] = product.Stock,
+            ["Specification"] = product.Specification ?? string.Empty
+        };
+    }
+
+    private static Product MapProduct(BsonDocument document)
+    {
+        return new Product
+        {
+            ProductID = document.GetValue("_id", 0).ToInt32(),
+            Name = GetString(document, "Name"),
+            Brand = GetString(document, "Brand"),
+            Description = GetString(document, "Description"),
+            Price = Convert.ToSingle(document.GetValue("Price", 0d).ToDouble()),
+            Stock = document.GetValue("Stock", 0).ToInt32(),
+            Specification = GetString(document, "Specification")
+        };
+    }
+
+    private static string GetString(BsonDocument document, string fieldName)
+    {
+        return document.TryGetValue(fieldName, out var value) && !value.IsBsonNull
+            ? value.AsString
+            : string.Empty;
+    }
+
+    private static string ResolveMongoConnectionString()
+    {
+        var environmentValue = Environment.GetEnvironmentVariable("MONGODB_URI");
+        if (!string.IsNullOrWhiteSpace(environmentValue))
+        {
+            return environmentValue;
+        }
+
+        var dotEnvPath = FindDotEnvFile();
+        if (dotEnvPath != null)
+        {
+            foreach (var line in File.ReadAllLines(dotEnvPath))
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#') || !trimmed.Contains('='))
+                {
+                    continue;
+                }
+
+                var separatorIndex = trimmed.IndexOf('=');
+                var key = trimmed[..separatorIndex].Trim();
+                var value = trimmed[(separatorIndex + 1)..].Trim().Trim('"');
+
+                if (string.Equals(key, "MONGODB_URI", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(value))
+                {
+                    Environment.SetEnvironmentVariable("MONGODB_URI", value);
+                    return value;
+                }
+            }
+        }
+
+        throw new InvalidOperationException("MONGODB_URI was not found. Add it to the environment or .env file (Check Discord Pins).");
+    }
+
+    private static string? FindDotEnvFile()
+    {
+        var currentDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        for (var i = 0; i < 8 && currentDirectory != null; i++)
+        {
+            var candidate = Path.Combine(currentDirectory.FullName, ".env");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            currentDirectory = currentDirectory.Parent;
+        }
+
+        return null;
+    }
 }
