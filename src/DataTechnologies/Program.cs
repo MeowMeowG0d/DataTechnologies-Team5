@@ -1,4 +1,5 @@
 ﻿using Spectre.Console;
+using DotNetEnv;
 using DataTechnologies.Data;
 using DataTechnologies.Models;
 using DataTechnologies.Repositories;
@@ -7,6 +8,7 @@ using DataTechnologies.UI;
 using System.Data.Common;
 
 AppMenuView.RenderHeader();
+Env.Load();
 
 if (!AnsiConsole.Profile.Capabilities.Interactive)
 {
