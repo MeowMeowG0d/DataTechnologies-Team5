@@ -146,11 +146,19 @@ while (!shouldExit)
 		case MenuOptions.TestDatabaseConnection:
 			try
 			{
-				var dbConnection = new DBConnection();
-				using (var connection = dbConnection.GetConnection())
+				var testOption = AppMenuView.ShowTestDatabaseMenu();
+
+				if (testOption == MenuOptions.PostgreSqlDatabase)
 				{
+					var dbConnection = new DBConnection();
+					using var connection = dbConnection.GetConnection();
 					connection.Open();
-					AnsiConsole.MarkupLine("[green]Database connection successful![/]");
+					AnsiConsole.MarkupLine("[green]PostgreSQL connection successful![/]");
+				}
+				else if (testOption == MenuOptions.MongoDbDatabase)
+				{
+					DBConnection.TestMongoConnection();
+					AnsiConsole.MarkupLine("[green]MongoDB connection successful![/]");
 				}
 			}
 			catch (Exception ex)

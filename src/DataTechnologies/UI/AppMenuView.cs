@@ -7,6 +7,8 @@ namespace DataTechnologies.UI
         public const string RunDemo = "Run demo";
         public const string ShowStatus = "Show status";
         public const string TestDatabaseConnection = "Test Database Connection";
+        public const string PostgreSqlDatabase = "PostgreSQL";
+        public const string MongoDbDatabase = "MongoDB";
         public const string InitializeDatabaseTables = "Initialize Database Tables";
         public const string InsertTestData = "Insert Test Data";
         public const string Exit = "Exit";
@@ -76,6 +78,16 @@ namespace DataTechnologies.UI
                 Back
             };
         }
+
+        public static IReadOnlyList<string> GetTestDatabaseMenuOptions()
+        {
+            return new[]
+            {
+                PostgreSqlDatabase,
+                MongoDbDatabase,
+                Back
+            };
+        }
     }
 
     public static class AppMenuView
@@ -105,6 +117,9 @@ namespace DataTechnologies.UI
 
         public static string ShowInitializeMenu() =>
             AnsiConsole.Prompt(CreateSelectionPrompt("Initialize options", MenuOptions.GetInitializeMenuOptions()));
+
+        public static string ShowTestDatabaseMenu() =>
+            AnsiConsole.Prompt(CreateSelectionPrompt("Test database options", MenuOptions.GetTestDatabaseMenuOptions()));
 
         private static SelectionPrompt<string> CreateSelectionPrompt(string title, IEnumerable<string> options)
         {

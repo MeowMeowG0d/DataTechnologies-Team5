@@ -28,14 +28,7 @@ public class ProductRepository
 
     private static (IMongoDatabase MongoDatabase, IMongoCollection<BsonDocument> ProductCollection) InitializeMongoStorage()
     {
-        var mongoConnectionString = ResolveMongoConnectionString();
-        var mongoUrl = new MongoUrl(mongoConnectionString);
-        var databaseName = string.IsNullOrWhiteSpace(mongoUrl.DatabaseName)
-            ? "team5"
-            : mongoUrl.DatabaseName;
-
-        var mongoClient = new MongoClient(mongoConnectionString);
-        var mongoDatabase = mongoClient.GetDatabase(databaseName);
+        var mongoDatabase = DBConnection.CreateMongoDatabase();
         var productCollection = mongoDatabase.GetCollection<BsonDocument>(ProductCollectionName);
 
         return (mongoDatabase, productCollection);
@@ -140,7 +133,7 @@ public class ProductRepository
         return productRatings;
     }
 
-    private void EnsureMongoConnection()
+    public void EnsureMongoConnection()
     {
         try
         {
@@ -227,57 +220,6 @@ public class ProductRepository
             : string.Empty;
     }
 
-    private static string ResolveMongoConnectionString()
-    {
-        var environmentValue = Environment.GetEnvironmentVariable("MONGODB_URI");
-        if (!string.IsNullOrWhiteSpace(environmentValue))
-        {
-            return environmentValue;
-        }
-
-        var dotEnvPath = FindDotEnvFile();
-        if (dotEnvPath != null)
-        {
-            foreach (var line in File.ReadAllLines(dotEnvPath))
-            {
-                var trimmed = line.Trim();
-                if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#') || !trimmed.Contains('='))
-                {
-                    continue;
-                }
-
-                var separatorIndex = trimmed.IndexOf('=');
-                var key = trimmed[..separatorIndex].Trim();
-                var value = trimmed[(separatorIndex + 1)..].Trim().Trim('"');
-
-                if (string.Equals(key, "MONGODB_URI", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(value))
-                {
-                    Environment.SetEnvironmentVariable("MONGODB_URI", value);
-                    return value;
-                }
-            }
-        }
-
-        throw new InvalidOperationException("MONGODB_URI was not found. Add it to the environment or .env file (Check Discord Pins).");
-    }
-
-    private static string? FindDotEnvFile()
-    {
-        var currentDirectory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        for (var i = 0; i < 8 && currentDirectory != null; i++)
-        {
-            var candidate = Path.Combine(currentDirectory.FullName, ".env");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            currentDirectory = currentDirectory.Parent;
-        }
-
-        return null;
-    }
 }
 
 // Kan miss in de toekomst gebruikt worden... 🎁
