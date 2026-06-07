@@ -5,6 +5,8 @@ using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
 using System.Data.Common;
+using DotNetEnv;
+using Neo4j.Driver;
 
 AppMenuView.RenderHeader();
 
@@ -90,9 +92,31 @@ while (!shouldExit)
 
 				if (demoOption == MenuOptions.ShowAvailableProducts)
 				{
+					Env.Load();
 					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
 					var dbConnection = new DBConnection(demoDatabaseName);
 					var connectionString = dbConnection.GetConnection().ConnectionString;
+
+					//neo4j
+					var neo4jUri = Env.GetString("NEO4J_URI");
+					var neo4jUser = Env.GetString("NEO4J_USER");
+					var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
+					await using var driver = GraphDatabase.Driver(neo4jUri, AuthTokens.Basic(neo4jUser, neo4jPassword));
+
+					//verify connection
+					try
+					{
+						await driver.VerifyConnectivityAsync();
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine("CRITICAL ERROR: Could not connect to the Neo4j database.");
+						Console.WriteLine($"Details: {ex.Message}");
+
+						Console.WriteLine("\nPress any key to exit...");
+						Console.ReadKey();
+						return;
+					}
 
 					var repo = new ProductRepository(connectionString);
 					var service = new ProductBrowseService(repo);
