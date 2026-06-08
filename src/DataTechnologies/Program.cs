@@ -5,6 +5,8 @@ using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
 using System.Data.Common;
+using DotNetEnv;
+using Neo4j.Driver;
 
 AppMenuView.RenderHeader();
 
@@ -25,6 +27,9 @@ if (!AnsiConsole.Profile.Capabilities.Interactive)
 	return;
 }
 
+// 1. Added session
+var session = new AppSession();
+
 var shouldExit = false;
 
 while (!shouldExit)
@@ -32,13 +37,52 @@ while (!shouldExit)
 	AnsiConsole.Clear();
 	AppMenuView.RenderHeader();
 
-	var option = AppMenuView.ShowMainMenu();
+	var option = AppMenuView.ShowMainMenu(session);
 
 	AnsiConsole.Clear();
 	AppMenuView.RenderHeader();
 
 	switch (option)
 	{
+		case MenuOptions.Login:
+			try
+			{
+				var dbConnection = new DBConnection();
+				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+				var userService = new UserService(userRepo, new PasswordHasher());
+				UserMenu.HandleLogin(userService, session);
+			}
+			catch (Exception ex)
+			{
+				AnsiConsole.MarkupLine($"[red]Login failed: {ex.Message}[/]");
+			}
+			break;
+		case MenuOptions.Logout:
+			session.Logout();
+			AnsiConsole.MarkupLine("[yellow]You have been logged out.[/]");
+			break;
+
+		case MenuOptions.RegisterUser:
+			try
+			{
+				var dbConnection = new DBConnection();
+				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+				var userService = new UserService(userRepo, new PasswordHasher());
+
+				var email = AnsiConsole.Ask<string>("Enter email:");
+				var name = AnsiConsole.Ask<string>("Enter name:");
+				var password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password:").Secret());
+
+				var user = new User { Email = email, Name = name, PasswordHash = password, EmailVerified = false };
+				var newUserId = userService.AddUser(user);
+				AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
+			}
+			catch (Exception ex)
+			{
+				AnsiConsole.MarkupLine($"[red]Registration failed: {ex.Message}[/]");
+			}
+			break;
+
 		case MenuOptions.RunDemo:
 			try
 			{
@@ -48,9 +92,31 @@ while (!shouldExit)
 
 				if (demoOption == MenuOptions.ShowAvailableProducts)
 				{
+					Env.Load();
 					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
 					var dbConnection = new DBConnection(demoDatabaseName);
 					var connectionString = dbConnection.GetConnection().ConnectionString;
+
+					//neo4j
+					var neo4jUri = Env.GetString("NEO4J_URI");
+					var neo4jUser = Env.GetString("NEO4J_USER");
+					var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
+					await using var driver = GraphDatabase.Driver(neo4jUri, AuthTokens.Basic(neo4jUser, neo4jPassword));
+
+					//verify connection
+					try
+					{
+						await driver.VerifyConnectivityAsync();
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine("CRITICAL ERROR: Could not connect to the Neo4j database.");
+						Console.WriteLine($"Details: {ex.Message}");
+
+						Console.WriteLine("\nPress any key to exit...");
+						Console.ReadKey();
+						return;
+					}
 
 					var repo = new ProductRepository(connectionString);
 					var service = new ProductBrowseService(repo);
@@ -70,18 +136,18 @@ while (!shouldExit)
 					);
 					var payOff = new PayOffShoppingCart(userService, addressService, orderRepo, shoppingCartService, emailService);
 
-					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService, userService, payOff, addressService);
+					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService, userService, payOff, addressService, session);
 					productOverviewScreen.ShowAvailableProducts();
 				}
-				
-				else if (demoOption == MenuOptions.User)
-                {
-                    var dbConnection = new DBConnection();
-                    var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
-                    var userService = new UserService(userRepo, new PasswordHasher());
 
-                    UserMenu.ShowUserDemo(userService);
-                }
+				else if (demoOption == MenuOptions.Account)
+				{
+					var dbConnection = new DBConnection();
+					var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+					var userService = new UserService(userRepo, new PasswordHasher());
+
+					UserMenu.ShowUserDemo(userService, session);
+				}
 
 			}
 			catch (Exception ex)

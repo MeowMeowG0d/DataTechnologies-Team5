@@ -130,6 +130,32 @@ namespace DataTechnologies.Repositories
         return productCategories;
     }
 
+    public List<ProductRatings> GetProductRatings()
+    {
+        const string sql = "SELECT * FROM ProductRatings;";
+        var productRatings = new List<ProductRatings>();
+
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+        using var cmd = new NpgsqlCommand(sql, conn);
+        using var reader = cmd.ExecuteReader();
+
+        while (reader.Read())
+        {
+            productRatings.Add(new ProductRatings
+            {
+                RatingID = reader.GetInt32(reader.GetOrdinal("RatingID")),
+                ProductID = reader.GetInt32(reader.GetOrdinal("ProductID")),
+                UserID = reader.GetInt32(reader.GetOrdinal("UserID")),
+                Rating = reader.GetInt32(reader.GetOrdinal("Rating")),
+                ReviewText = reader.GetString(reader.GetOrdinal("ReviewText")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
+            });
+        }
+
+        return productRatings;
+    }
+
     public bool Update(Product product)
     {
         const string sql = @"

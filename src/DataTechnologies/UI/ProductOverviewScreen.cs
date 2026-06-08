@@ -8,47 +8,67 @@ public class ProductOverviewScreen
     private const string BackToMenu = "Terug";
     private const string ViewCart = "Bekijk winkelwagen";
     private const string ChooseCategory = "Kies categorie";
+    private const string ChooseBrand = "Kies merk";
+    private const string ChooseRating = "Kies rating";
     private const string SearchProducts = "Zoek producten";
     private const string ClearFilters = "Verwijder filters";
     private const string AllCategories = "Alle categorieen";
+    private const string AllBrands = "Alle merken";
+    private const string AllRatings = "Alle ratings";
     private readonly ProductBrowseService _productBrowseService;
     private readonly ShoppingCartService _shoppingCartService;
     private readonly UserService _userService;
     private readonly PayOffShoppingCart _payOffShoppingCart;
     private readonly AddressService _addressService;
-    private const int TEMPUSERID = 1;
+    private readonly AppSession _session;
 
-    public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService)
+    public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService, AppSession session)
     {
         _productBrowseService = productBrowseService;
         _shoppingCartService = shoppingCartService;
         _userService = userService;
         _payOffShoppingCart = payOffShoppingCart;
         _addressService = addressService;
+        _session = session;
     }
 
     public void ShowAvailableProducts()
     {
         int? activeCategoryId = null;
+        string activeBrand = string.Empty;
+        int? activeMinimumRating = null;
         string searchText = string.Empty;
         int selectedProductIndex = -1;
 
         while (true)
         {
             var categoryOptions = _productBrowseService.GetCategories();
-            var categoryCounts = _productBrowseService.GetCategoryProductCounts(searchText);
-            var products = _productBrowseService.GetFilteredProducts(activeCategoryId, searchText);
+            var brandOptions = _productBrowseService.GetBrands(activeCategoryId, searchText, activeMinimumRating);
+            var brandCounts = _productBrowseService.GetBrandProductCounts(activeCategoryId, searchText, activeMinimumRating);
+            var categoryCounts = _productBrowseService.GetCategoryProductCounts(searchText, activeBrand, activeMinimumRating);
+            var products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText);
 
             if (activeCategoryId.HasValue && !categoryOptions.Any(c => c.CategoryID == activeCategoryId.Value))
             {
                 activeCategoryId = null;
-                products = _productBrowseService.GetFilteredProducts(activeCategoryId, searchText);
+                brandOptions = _productBrowseService.GetBrands(activeCategoryId, searchText, activeMinimumRating);
+                brandCounts = _productBrowseService.GetBrandProductCounts(activeCategoryId, searchText, activeMinimumRating);
+                products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText);
+            }
+
+            if (!string.IsNullOrWhiteSpace(activeBrand) && !brandOptions.Contains(activeBrand, StringComparer.OrdinalIgnoreCase))
+            {
+                activeBrand = string.Empty;
+                categoryCounts = _productBrowseService.GetCategoryProductCounts(searchText, activeBrand, activeMinimumRating);
+                products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText);
             }
 
             AnsiConsole.Clear();
 
             AnsiConsole.Write(new Rule("[green]Productoverzicht[/]"));
             AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
+            AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {ResolveBrandName(activeBrand)}");
+            AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
             var displaySearchText = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
             AnsiConsole.MarkupLine($"[grey]Zoekterm:[/] {displaySearchText}");
             AnsiConsole.WriteLine();
@@ -84,7 +104,7 @@ public class ProductOverviewScreen
                 AnsiConsole.WriteLine();
             }
 
-            var selectedOption = PromptFilterMenuWithNavigation(selectedProductIndex, products, activeCategoryId, searchText, categoryOptions);
+            var selectedOption = PromptFilterMenuWithNavigation(selectedProductIndex, products, activeCategoryId, activeBrand, activeMinimumRating, searchText, categoryOptions);
             
             if (selectedOption == BackToMenu)
             {
@@ -107,7 +127,7 @@ public class ProductOverviewScreen
             if (selectedOption == ChooseCategory)
             {
                 AnsiConsole.Clear();
-                ShowCategoryFilterTable(categoryOptions, categoryCounts, activeCategoryId, searchText);
+                ShowCategoryFilterTable(categoryOptions, categoryCounts, activeCategoryId, activeBrand, activeMinimumRating, searchText);
                 var result = PromptCategorySelection(categoryOptions, categoryCounts, activeCategoryId);
                 if (result.HasValue || result == null)
                 {
@@ -117,10 +137,28 @@ public class ProductOverviewScreen
                 continue;
             }
 
+            if (selectedOption == ChooseBrand)
+            {
+                AnsiConsole.Clear();
+                ShowBrandFilterTable(brandOptions, brandCounts, activeBrand, activeCategoryId, activeMinimumRating, categoryOptions, searchText);
+                activeBrand = PromptBrandSelection(brandOptions, brandCounts, activeBrand);
+                selectedProductIndex = -1;
+                continue;
+            }
+
+            if (selectedOption == ChooseRating)
+            {
+                AnsiConsole.Clear();
+                ShowRatingFilterTable(activeMinimumRating, activeCategoryId, activeBrand, categoryOptions, searchText);
+                activeMinimumRating = PromptRatingSelection(activeMinimumRating);
+                selectedProductIndex = -1;
+                continue;
+            }
+
             if (selectedOption == SearchProducts)
             {
                 AnsiConsole.Clear();
-                searchText = PromptSearchText(searchText, activeCategoryId, categoryOptions);
+                searchText = PromptSearchText(searchText, activeCategoryId, activeBrand, activeMinimumRating, categoryOptions);
                 selectedProductIndex = -1;
                 continue;
             }
@@ -128,14 +166,26 @@ public class ProductOverviewScreen
             if (selectedOption == ClearFilters)
             {
                 activeCategoryId = null;
+                activeBrand = string.Empty;
+                activeMinimumRating = null;
                 searchText = string.Empty;
                 selectedProductIndex = -1;
                 continue;
             }
 
-            if (selectedOption == ViewCart)
+            if (selectedOption != null && selectedOption.StartsWith(ViewCart))
             {
-                var cartScreen = new ShoppingCartScreen(_shoppingCartService, TEMPUSERID, _userService, _payOffShoppingCart, _addressService);
+                if (!_session.IsLoggedIn)
+                {
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om de winkelwagen te bekijken.[/]");
+                    AnsiConsole.MarkupLine("[grey]Druk op een toets om door te gaan...[/]");
+                    Console.ReadKey(true);
+                    AnsiConsole.Clear();
+                    ShowAvailableProducts();
+                    return;
+                }
+
+                var cartScreen = new ShoppingCartScreen(_shoppingCartService, _session.UserId, _userService, _payOffShoppingCart, _addressService);
                 cartScreen.ShowCartOverview();
                 AnsiConsole.Clear();
                 selectedProductIndex = -1;
@@ -162,8 +212,15 @@ public class ProductOverviewScreen
 
             if (action == "Voeg toe aan winkelwagen")
             {
-                _shoppingCartService.AddItemToCart(selectedProduct.ProductID, TEMPUSERID);
-                AnsiConsole.MarkupLine($"[green]✓ {selectedProduct.Name} succesvol toegevoegd aan de winkelwagen![/]");
+                if (!_session.IsLoggedIn)
+                {
+                    AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om producten toe te voegen.[/]");
+                }
+                else
+                {
+                    _shoppingCartService.AddItemToCart(selectedProduct.ProductID, _session.UserId);
+                    AnsiConsole.MarkupLine($"[green]✓ {selectedProduct.Name} succesvol toegevoegd aan de winkelwagen![/]");
+                }
                 AnsiConsole.WriteLine("Druk op een knop om door te gaan...");
                 Console.ReadKey(true);
             }
@@ -175,14 +232,19 @@ public class ProductOverviewScreen
         }
     }
 
-    private static string PromptFilterMenuWithNavigation(int selectedProductIndex, List<Product> products, int? activeCategoryId, string searchText, IReadOnlyList<Categories> categoryOptions)
+    private string PromptFilterMenuWithNavigation(int selectedProductIndex, List<Product> products, int? activeCategoryId, string activeBrand, int? activeMinimumRating, string searchText, IReadOnlyList<Categories> categoryOptions)
     {
+        int totalItems = _session.IsLoggedIn ? _shoppingCartService.GetTotalItemsInCart(_session.UserId) : 0;
+        string ViewCartWithTotal = $"{ViewCart} ({totalItems})"; 
+
         var menuOptions = new List<string>
         {
             ChooseCategory,
+            ChooseBrand,
+            ChooseRating,
             SearchProducts,
             ClearFilters,
-            ViewCart,
+            ViewCartWithTotal,
             BackToMenu
         };
 
@@ -199,6 +261,8 @@ public class ProductOverviewScreen
             
             // Toon huidiige filters
             AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
+            AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {ResolveBrandName(activeBrand)}");
+            AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
             var displaySearchText = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
             AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchText}");
             AnsiConsole.WriteLine();
@@ -334,11 +398,14 @@ public class ProductOverviewScreen
         return selectedCategory.CategoryID;
     }
 
-    private static string PromptSearchText(string currentSearchText, int? activeCategoryId, IReadOnlyList<Categories> categoryOptions)
+    private static string PromptSearchText(string currentSearchText, int? activeCategoryId, string activeBrand, int? activeMinimumRating, IReadOnlyList<Categories> categoryOptions)
     {
         var categoryName = ResolveCategoryName(activeCategoryId, categoryOptions);
         var escapedCategoryName = Markup.Escape(categoryName);
         AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {escapedCategoryName}");
+        var displayBrand = Markup.Escape(ResolveBrandName(activeBrand));
+        AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {displayBrand}");
+        AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
         
         var displaySearchTerm = string.IsNullOrWhiteSpace(currentSearchText) ? "-" : Markup.Escape(currentSearchText);
         AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
@@ -351,8 +418,11 @@ public class ProductOverviewScreen
         return newSearchTerm;
     }
 
-    private static void ShowCategoryFilterTable(IReadOnlyList<Categories> categoryOptions, IReadOnlyDictionary<int, int> categoryCounts, int? activeCategoryId, string searchText)
+    private static void ShowCategoryFilterTable(IReadOnlyList<Categories> categoryOptions, IReadOnlyDictionary<int, int> categoryCounts, int? activeCategoryId, string activeBrand, int? activeMinimumRating, string searchText)
     {
+        var displayBrand = Markup.Escape(ResolveBrandName(activeBrand));
+        AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {displayBrand}");
+        AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
         var displaySearchTerm = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
         AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
         AnsiConsole.WriteLine();
@@ -392,9 +462,161 @@ public class ProductOverviewScreen
             ?? AllCategories;
     }
 
+    private static string PromptBrandSelection(IReadOnlyList<string> brandOptions, IReadOnlyDictionary<string, int> brandCounts, string activeBrand)
+    {
+        var brandChoices = brandOptions
+            .Select(brand => $"{brand} ({GetBrandCount(brandCounts, brand)})")
+            .ToList();
+
+        var brandChoiceMap = brandChoices
+            .Select((choice, index) => new { choice, brand = brandOptions[index] })
+            .ToDictionary(x => x.choice, x => x.brand);
+
+        var choices = brandChoices
+            .Prepend(AllBrands)
+            .Append(BackToMenu)
+            .ToList();
+
+        var brandName = ResolveBrandName(activeBrand);
+        var escapedBrandName = Markup.Escape(brandName);
+        var selectedOption = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"Kies een merk (huidig actief: {escapedBrandName})")
+                .PageSize(10)
+                .HighlightStyle(new Style(foreground: Color.Green))
+                .AddChoices(choices));
+
+        if (selectedOption == BackToMenu)
+        {
+            return activeBrand;
+        }
+
+        if (selectedOption == AllBrands)
+        {
+            return string.Empty;
+        }
+
+        return brandChoiceMap[selectedOption];
+    }
+
+    private static void ShowBrandFilterTable(IReadOnlyList<string> brandOptions, IReadOnlyDictionary<string, int> brandCounts, string activeBrand, int? activeCategoryId, int? activeMinimumRating, IReadOnlyList<Categories> categoryOptions, string searchText)
+    {
+        AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
+        AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
+        var displaySearchTerm = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
+        AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
+        AnsiConsole.WriteLine();
+
+        var brandTable = new Table()
+            .RoundedBorder()
+            .AddColumn("Actief")
+            .AddColumn("Merk")
+            .AddColumn("Aantal producten");
+
+        brandTable.AddRow(
+            string.IsNullOrWhiteSpace(activeBrand) ? "[green]Actief[/]" : "-",
+            AllBrands,
+            brandCounts.Values.Sum().ToString());
+
+        foreach (var brand in brandOptions)
+        {
+            var isActive = string.Equals(activeBrand, brand, StringComparison.OrdinalIgnoreCase);
+            brandTable.AddRow(
+                isActive ? "[green]Actief[/]" : "-",
+                Markup.Escape(brand),
+                GetBrandCount(brandCounts, brand).ToString());
+        }
+
+        AnsiConsole.Write(brandTable);
+    }
+
+    private static string ResolveBrandName(string activeBrand)
+    {
+        return string.IsNullOrWhiteSpace(activeBrand) ? AllBrands : activeBrand;
+    }
+
+    private static int? PromptRatingSelection(int? activeMinimumRating)
+    {
+        var choices = new List<string>
+        {
+            AllRatings,
+            FormatRatingLabel(5),
+            FormatRatingLabel(4),
+            FormatRatingLabel(3),
+            FormatRatingLabel(2),
+            FormatRatingLabel(1),
+            BackToMenu
+        };
+
+        var selectedOption = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"Kies een ratingfilter (huidig actief: {ResolveRatingName(activeMinimumRating)})")
+                .PageSize(10)
+                .HighlightStyle(new Style(foreground: Color.Green))
+                .AddChoices(choices));
+
+        if (selectedOption == BackToMenu)
+        {
+            return activeMinimumRating;
+        }
+
+        if (selectedOption == AllRatings)
+        {
+            return null;
+        }
+
+        return int.Parse(selectedOption.Substring(0, 1));
+    }
+
+    private static void ShowRatingFilterTable(int? activeMinimumRating, int? activeCategoryId, string activeBrand, IReadOnlyList<Categories> categoryOptions, string searchText)
+    {
+        AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
+        var displayBrand = Markup.Escape(ResolveBrandName(activeBrand));
+        AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {displayBrand}");
+        var displaySearchTerm = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
+        AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
+        AnsiConsole.WriteLine();
+
+        var ratingTable = new Table()
+            .RoundedBorder()
+            .AddColumn("Actief")
+            .AddColumn("Ratingfilter");
+
+        ratingTable.AddRow(
+            !activeMinimumRating.HasValue ? "[green]Actief[/]" : "-",
+            AllRatings);
+
+        for (int rating = 5; rating >= 1; rating--)
+        {
+            var isActive = activeMinimumRating.HasValue && activeMinimumRating.Value == rating;
+            ratingTable.AddRow(
+                isActive ? "[green]Actief[/]" : "-",
+                FormatRatingLabel(rating));
+        }
+
+        AnsiConsole.Write(ratingTable);
+    }
+
+    private static string ResolveRatingName(int? activeMinimumRating)
+    {
+        return activeMinimumRating.HasValue
+            ? FormatRatingLabel(activeMinimumRating.Value)
+            : AllRatings;
+    }
+
+    private static string FormatRatingLabel(int rating)
+    {
+        return rating == 1 ? "1 ster of hoger" : $"{rating} sterren of hoger";
+    }
+
     private static int GetCategoryCount(IReadOnlyDictionary<int, int> categoryCounts, int categoryId)
     {
         return categoryCounts.TryGetValue(categoryId, out var count) ? count : 0;
+    }
+
+    private static int GetBrandCount(IReadOnlyDictionary<string, int> brandCounts, string brand)
+    {
+        return brandCounts.TryGetValue(brand, out var count) ? count : 0;
     }
 
         private static void ShowProductDetails(Product product)

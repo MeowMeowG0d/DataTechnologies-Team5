@@ -79,10 +79,17 @@ public class UserService(UserRepository userRepository, IPasswordHasher password
 
         return userRepository.GetByEmail(email);
     }
-
     public List<User> GetAllUsers()
     {
         return userRepository.GetAll();
+    }
+
+    public List<Orders> GetPreviousOrders(int userId)
+    {
+        if (userId <= 0)
+            throw new ArgumentException("Invalid user ID.");
+
+        return userRepository.GetPreviousOrders(userId);
     }
 
 }
