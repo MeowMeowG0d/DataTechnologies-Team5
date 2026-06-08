@@ -11,6 +11,7 @@ namespace DataTechnologies.Repositories
         List<Product> GetAvailableProducts();
         List<Categories> GetCategories();
         List<ProductCategories> GetProductCategories();
+        List<ProductRatings> GetProductRatings();
         bool Update(Product product);
         bool Delete(int productId);
     }
