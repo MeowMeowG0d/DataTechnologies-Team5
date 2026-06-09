@@ -1,14 +1,15 @@
 ﻿using Spectre.Console;
+using DotNetEnv;
 using DataTechnologies.Data;
 using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
 using System.Data.Common;
-using DotNetEnv;
 using Neo4j.Driver;
 
 AppMenuView.RenderHeader();
+Env.Load();
 
 if (!AnsiConsole.Profile.Capabilities.Interactive)
 {
@@ -170,11 +171,19 @@ while (!shouldExit)
 		case MenuOptions.TestDatabaseConnection:
 			try
 			{
-				var dbConnection = new DBConnection();
-				using (var connection = dbConnection.GetConnection())
+				var testOption = AppMenuView.ShowTestDatabaseMenu();
+
+				if (testOption == MenuOptions.PostgreSqlDatabase)
 				{
+					var dbConnection = new DBConnection();
+					using var connection = dbConnection.GetConnection();
 					connection.Open();
-					AnsiConsole.MarkupLine("[green]Database connection successful![/]");
+					AnsiConsole.MarkupLine("[green]PostgreSQL connection successful![/]");
+				}
+				else if (testOption == MenuOptions.MongoDbDatabase)
+				{
+					DBConnection.TestMongoConnection();
+					AnsiConsole.MarkupLine("[green]MongoDB connection successful![/]");
 				}
 			}
 			catch (Exception ex)
