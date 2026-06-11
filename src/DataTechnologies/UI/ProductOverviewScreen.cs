@@ -10,11 +10,13 @@ public class ProductOverviewScreen
     private const string ChooseCategory = "Kies categorie";
     private const string ChooseBrand = "Kies merk";
     private const string ChooseRating = "Kies rating";
+    private const string ChoosePriceRange = "Kies prijsrange";
     private const string SearchProducts = "Zoek producten";
     private const string ClearFilters = "Verwijder filters";
     private const string AllCategories = "Alle categorieen";
     private const string AllBrands = "Alle merken";
     private const string AllRatings = "Alle ratings";
+    private const string AllPrices = "Alle prijzen";
     private readonly ProductBrowseService _productBrowseService;
     private readonly ShoppingCartService _shoppingCartService;
     private readonly UserService _userService;
@@ -37,30 +39,32 @@ public class ProductOverviewScreen
         int? activeCategoryId = null;
         string activeBrand = string.Empty;
         int? activeMinimumRating = null;
+        float? activeMinimumPrice = null;
+        float? activeMaximumPrice = null;
         string searchText = string.Empty;
         int selectedProductIndex = -1;
 
         while (true)
         {
             var categoryOptions = _productBrowseService.GetCategories();
-            var brandOptions = _productBrowseService.GetBrands(activeCategoryId, searchText, activeMinimumRating);
-            var brandCounts = _productBrowseService.GetBrandProductCounts(activeCategoryId, searchText, activeMinimumRating);
-            var categoryCounts = _productBrowseService.GetCategoryProductCounts(searchText, activeBrand, activeMinimumRating);
-            var products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText);
+            var brandOptions = _productBrowseService.GetBrands(activeCategoryId, searchText, activeMinimumRating, activeMinimumPrice, activeMaximumPrice);
+            var brandCounts = _productBrowseService.GetBrandProductCounts(activeCategoryId, searchText, activeMinimumRating, activeMinimumPrice, activeMaximumPrice);
+            var categoryCounts = _productBrowseService.GetCategoryProductCounts(searchText, activeBrand, activeMinimumRating, activeMinimumPrice, activeMaximumPrice);
+            var products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText, activeMinimumPrice, activeMaximumPrice);
 
             if (activeCategoryId.HasValue && !categoryOptions.Any(c => c.CategoryID == activeCategoryId.Value))
             {
                 activeCategoryId = null;
-                brandOptions = _productBrowseService.GetBrands(activeCategoryId, searchText, activeMinimumRating);
-                brandCounts = _productBrowseService.GetBrandProductCounts(activeCategoryId, searchText, activeMinimumRating);
-                products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText);
+                brandOptions = _productBrowseService.GetBrands(activeCategoryId, searchText, activeMinimumRating, activeMinimumPrice, activeMaximumPrice);
+                brandCounts = _productBrowseService.GetBrandProductCounts(activeCategoryId, searchText, activeMinimumRating, activeMinimumPrice, activeMaximumPrice);
+                products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText, activeMinimumPrice, activeMaximumPrice);
             }
 
             if (!string.IsNullOrWhiteSpace(activeBrand) && !brandOptions.Contains(activeBrand, StringComparer.OrdinalIgnoreCase))
             {
                 activeBrand = string.Empty;
-                categoryCounts = _productBrowseService.GetCategoryProductCounts(searchText, activeBrand, activeMinimumRating);
-                products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText);
+                categoryCounts = _productBrowseService.GetCategoryProductCounts(searchText, activeBrand, activeMinimumRating, activeMinimumPrice, activeMaximumPrice);
+                products = _productBrowseService.GetFilteredProducts(activeCategoryId, activeBrand, activeMinimumRating, searchText, activeMinimumPrice, activeMaximumPrice);
             }
 
             AnsiConsole.Clear();
@@ -69,6 +73,7 @@ public class ProductOverviewScreen
             AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
             AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {ResolveBrandName(activeBrand)}");
             AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
+            AnsiConsole.MarkupLine($"[grey]Actieve prijsrange:[/] {ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice)}");
             var displaySearchText = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
             AnsiConsole.MarkupLine($"[grey]Zoekterm:[/] {displaySearchText}");
             AnsiConsole.WriteLine();
@@ -104,7 +109,7 @@ public class ProductOverviewScreen
                 AnsiConsole.WriteLine();
             }
 
-            var selectedOption = PromptFilterMenuWithNavigation(selectedProductIndex, products, activeCategoryId, activeBrand, activeMinimumRating, searchText, categoryOptions);
+            var selectedOption = PromptFilterMenuWithNavigation(selectedProductIndex, products, activeCategoryId, activeBrand, activeMinimumRating, activeMinimumPrice, activeMaximumPrice, searchText, categoryOptions);
             
             if (selectedOption == BackToMenu)
             {
@@ -127,7 +132,7 @@ public class ProductOverviewScreen
             if (selectedOption == ChooseCategory)
             {
                 AnsiConsole.Clear();
-                ShowCategoryFilterTable(categoryOptions, categoryCounts, activeCategoryId, activeBrand, activeMinimumRating, searchText);
+                ShowCategoryFilterTable(categoryOptions, categoryCounts, activeCategoryId, activeBrand, activeMinimumRating, activeMinimumPrice, activeMaximumPrice, searchText);
                 var result = PromptCategorySelection(categoryOptions, categoryCounts, activeCategoryId);
                 if (result.HasValue || result == null)
                 {
@@ -140,7 +145,7 @@ public class ProductOverviewScreen
             if (selectedOption == ChooseBrand)
             {
                 AnsiConsole.Clear();
-                ShowBrandFilterTable(brandOptions, brandCounts, activeBrand, activeCategoryId, activeMinimumRating, categoryOptions, searchText);
+                ShowBrandFilterTable(brandOptions, brandCounts, activeBrand, activeCategoryId, activeMinimumRating, activeMinimumPrice, activeMaximumPrice, categoryOptions, searchText);
                 activeBrand = PromptBrandSelection(brandOptions, brandCounts, activeBrand);
                 selectedProductIndex = -1;
                 continue;
@@ -149,8 +154,17 @@ public class ProductOverviewScreen
             if (selectedOption == ChooseRating)
             {
                 AnsiConsole.Clear();
-                ShowRatingFilterTable(activeMinimumRating, activeCategoryId, activeBrand, categoryOptions, searchText);
+                ShowRatingFilterTable(activeMinimumRating, activeCategoryId, activeBrand, activeMinimumPrice, activeMaximumPrice, categoryOptions, searchText);
                 activeMinimumRating = PromptRatingSelection(activeMinimumRating);
+                selectedProductIndex = -1;
+                continue;
+            }
+
+            if (selectedOption == ChoosePriceRange)
+            {
+                AnsiConsole.Clear();
+                ShowPriceFilterTable(activeMinimumPrice, activeMaximumPrice, activeCategoryId, activeBrand, activeMinimumRating, categoryOptions, searchText);
+                (activeMinimumPrice, activeMaximumPrice) = PromptPriceRangeSelection(activeMinimumPrice, activeMaximumPrice);
                 selectedProductIndex = -1;
                 continue;
             }
@@ -158,7 +172,7 @@ public class ProductOverviewScreen
             if (selectedOption == SearchProducts)
             {
                 AnsiConsole.Clear();
-                searchText = PromptSearchText(searchText, activeCategoryId, activeBrand, activeMinimumRating, categoryOptions);
+                searchText = PromptSearchText(searchText, activeCategoryId, activeBrand, activeMinimumRating, activeMinimumPrice, activeMaximumPrice, categoryOptions);
                 selectedProductIndex = -1;
                 continue;
             }
@@ -168,6 +182,8 @@ public class ProductOverviewScreen
                 activeCategoryId = null;
                 activeBrand = string.Empty;
                 activeMinimumRating = null;
+                activeMinimumPrice = null;
+                activeMaximumPrice = null;
                 searchText = string.Empty;
                 selectedProductIndex = -1;
                 continue;
@@ -232,7 +248,7 @@ public class ProductOverviewScreen
         }
     }
 
-    private string PromptFilterMenuWithNavigation(int selectedProductIndex, List<Product> products, int? activeCategoryId, string activeBrand, int? activeMinimumRating, string searchText, IReadOnlyList<Categories> categoryOptions)
+    private string PromptFilterMenuWithNavigation(int selectedProductIndex, List<Product> products, int? activeCategoryId, string activeBrand, int? activeMinimumRating, float? activeMinimumPrice, float? activeMaximumPrice, string searchText, IReadOnlyList<Categories> categoryOptions)
     {
         int totalItems = _session.IsLoggedIn ? _shoppingCartService.GetTotalItemsInCart(_session.UserId) : 0;
         string ViewCartWithTotal = $"{ViewCart} ({totalItems})"; 
@@ -242,6 +258,7 @@ public class ProductOverviewScreen
             ChooseCategory,
             ChooseBrand,
             ChooseRating,
+            ChoosePriceRange,
             SearchProducts,
             ClearFilters,
             ViewCartWithTotal,
@@ -263,6 +280,7 @@ public class ProductOverviewScreen
             AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
             AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {ResolveBrandName(activeBrand)}");
             AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
+            AnsiConsole.MarkupLine($"[grey]Actieve prijsrange:[/] {ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice)}");
             var displaySearchText = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
             AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchText}");
             AnsiConsole.WriteLine();
@@ -398,7 +416,7 @@ public class ProductOverviewScreen
         return selectedCategory.CategoryID;
     }
 
-    private static string PromptSearchText(string currentSearchText, int? activeCategoryId, string activeBrand, int? activeMinimumRating, IReadOnlyList<Categories> categoryOptions)
+    private static string PromptSearchText(string currentSearchText, int? activeCategoryId, string activeBrand, int? activeMinimumRating, float? activeMinimumPrice, float? activeMaximumPrice, IReadOnlyList<Categories> categoryOptions)
     {
         var categoryName = ResolveCategoryName(activeCategoryId, categoryOptions);
         var escapedCategoryName = Markup.Escape(categoryName);
@@ -406,6 +424,7 @@ public class ProductOverviewScreen
         var displayBrand = Markup.Escape(ResolveBrandName(activeBrand));
         AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {displayBrand}");
         AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
+        AnsiConsole.MarkupLine($"[grey]Actieve prijsrange:[/] {ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice)}");
         
         var displaySearchTerm = string.IsNullOrWhiteSpace(currentSearchText) ? "-" : Markup.Escape(currentSearchText);
         AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
@@ -418,11 +437,12 @@ public class ProductOverviewScreen
         return newSearchTerm;
     }
 
-    private static void ShowCategoryFilterTable(IReadOnlyList<Categories> categoryOptions, IReadOnlyDictionary<int, int> categoryCounts, int? activeCategoryId, string activeBrand, int? activeMinimumRating, string searchText)
+    private static void ShowCategoryFilterTable(IReadOnlyList<Categories> categoryOptions, IReadOnlyDictionary<int, int> categoryCounts, int? activeCategoryId, string activeBrand, int? activeMinimumRating, float? activeMinimumPrice, float? activeMaximumPrice, string searchText)
     {
         var displayBrand = Markup.Escape(ResolveBrandName(activeBrand));
         AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {displayBrand}");
         AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
+        AnsiConsole.MarkupLine($"[grey]Actieve prijsrange:[/] {ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice)}");
         var displaySearchTerm = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
         AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
         AnsiConsole.WriteLine();
@@ -499,10 +519,11 @@ public class ProductOverviewScreen
         return brandChoiceMap[selectedOption];
     }
 
-    private static void ShowBrandFilterTable(IReadOnlyList<string> brandOptions, IReadOnlyDictionary<string, int> brandCounts, string activeBrand, int? activeCategoryId, int? activeMinimumRating, IReadOnlyList<Categories> categoryOptions, string searchText)
+    private static void ShowBrandFilterTable(IReadOnlyList<string> brandOptions, IReadOnlyDictionary<string, int> brandCounts, string activeBrand, int? activeCategoryId, int? activeMinimumRating, float? activeMinimumPrice, float? activeMaximumPrice, IReadOnlyList<Categories> categoryOptions, string searchText)
     {
         AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
         AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
+        AnsiConsole.MarkupLine($"[grey]Actieve prijsrange:[/] {ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice)}");
         var displaySearchTerm = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
         AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
         AnsiConsole.WriteLine();
@@ -568,11 +589,12 @@ public class ProductOverviewScreen
         return int.Parse(selectedOption.Substring(0, 1));
     }
 
-    private static void ShowRatingFilterTable(int? activeMinimumRating, int? activeCategoryId, string activeBrand, IReadOnlyList<Categories> categoryOptions, string searchText)
+    private static void ShowRatingFilterTable(int? activeMinimumRating, int? activeCategoryId, string activeBrand, float? activeMinimumPrice, float? activeMaximumPrice, IReadOnlyList<Categories> categoryOptions, string searchText)
     {
         AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
         var displayBrand = Markup.Escape(ResolveBrandName(activeBrand));
         AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {displayBrand}");
+        AnsiConsole.MarkupLine($"[grey]Actieve prijsrange:[/] {ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice)}");
         var displaySearchTerm = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
         AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
         AnsiConsole.WriteLine();
@@ -595,6 +617,117 @@ public class ProductOverviewScreen
         }
 
         AnsiConsole.Write(ratingTable);
+    }
+
+    private static (float? MinimumPrice, float? MaximumPrice) PromptPriceRangeSelection(float? activeMinimumPrice, float? activeMaximumPrice)
+    {
+        var choices = new List<string>
+        {
+            "Prijsrange invoeren",
+            AllPrices,
+            BackToMenu
+        };
+
+        var selectedOption = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"Kies een prijsfilter (huidig actief: {ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice)})")
+                .PageSize(10)
+                .HighlightStyle(new Style(foreground: Color.Green))
+                .AddChoices(choices));
+
+        if (selectedOption == BackToMenu)
+        {
+            return (activeMinimumPrice, activeMaximumPrice);
+        }
+
+        if (selectedOption == AllPrices)
+        {
+            return (null, null);
+        }
+
+        while (true)
+        {
+            var minimumInput = AnsiConsole.Ask("Voer minimumprijs in (leeg = geen minimum):", string.Empty).Trim();
+            var maximumInput = AnsiConsole.Ask("Voer maximumprijs in (leeg = geen maximum):", string.Empty).Trim();
+
+            if (!TryParsePrice(minimumInput, out var minimumPrice) || !TryParsePrice(maximumInput, out var maximumPrice))
+            {
+                AnsiConsole.MarkupLine("[red]Ongeldige invoer. Gebruik een getal, bijvoorbeeld 49.99.[/]");
+                continue;
+            }
+
+            if (minimumPrice.HasValue && maximumPrice.HasValue && minimumPrice.Value > maximumPrice.Value)
+            {
+                AnsiConsole.MarkupLine("[red]Minimumprijs mag niet groter zijn dan maximumprijs.[/]");
+                continue;
+            }
+
+            return (minimumPrice, maximumPrice);
+        }
+    }
+
+    private static void ShowPriceFilterTable(float? activeMinimumPrice, float? activeMaximumPrice, int? activeCategoryId, string activeBrand, int? activeMinimumRating, IReadOnlyList<Categories> categoryOptions, string searchText)
+    {
+        AnsiConsole.MarkupLine($"[grey]Actieve categorie:[/] {ResolveCategoryName(activeCategoryId, categoryOptions)}");
+        var displayBrand = Markup.Escape(ResolveBrandName(activeBrand));
+        AnsiConsole.MarkupLine($"[grey]Actief merk:[/] {displayBrand}");
+        AnsiConsole.MarkupLine($"[grey]Actieve rating:[/] {ResolveRatingName(activeMinimumRating)}");
+        var displaySearchTerm = string.IsNullOrWhiteSpace(searchText) ? "-" : Markup.Escape(searchText);
+        AnsiConsole.MarkupLine($"[grey]Huidig zoekterm:[/] {displaySearchTerm}");
+        AnsiConsole.WriteLine();
+
+        var priceTable = new Table()
+            .RoundedBorder()
+            .AddColumn("Actief")
+            .AddColumn("Prijsrange");
+
+        priceTable.AddRow(
+            !activeMinimumPrice.HasValue && !activeMaximumPrice.HasValue ? "[green]Actief[/]" : "-",
+            AllPrices);
+
+        priceTable.AddRow(
+            activeMinimumPrice.HasValue || activeMaximumPrice.HasValue ? "[green]Actief[/]" : "-",
+            ResolvePriceRangeName(activeMinimumPrice, activeMaximumPrice));
+
+        AnsiConsole.Write(priceTable);
+    }
+
+    private static string ResolvePriceRangeName(float? minimumPrice, float? maximumPrice)
+    {
+        if (!minimumPrice.HasValue && !maximumPrice.HasValue)
+        {
+            return AllPrices;
+        }
+
+        if (minimumPrice.HasValue && maximumPrice.HasValue)
+        {
+            return $"EUR {minimumPrice.Value:0.00} - EUR {maximumPrice.Value:0.00}";
+        }
+
+        if (minimumPrice.HasValue)
+        {
+            return $"Vanaf EUR {minimumPrice.Value:0.00}";
+        }
+
+        return $"Tot EUR {maximumPrice!.Value:0.00}";
+    }
+
+    private static bool TryParsePrice(string input, out float? value)
+    {
+        value = null;
+
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return true;
+        }
+
+        if (!float.TryParse(input, out var parsedValue) || parsedValue < 0)
+        {
+            return false;
+        }
+
+        value = parsedValue;
+        return true;
     }
 
     private static string ResolveRatingName(int? activeMinimumRating)

@@ -11,11 +11,12 @@ namespace DataTechnologies.Services
             _productRepository = productRepository;
         }
 
-        public List<Product> GetFilteredProducts(int? categoryId, string activeBrand, int? minimumRating, string searchText)
+        public List<Product> GetFilteredProducts(int? categoryId, string activeBrand, int? minimumRating, string searchText, float? minimumPrice, float? maximumPrice)
         {
             var allProducts = _productRepository.GetAvailableProducts();
             var filteredBySearch = ApplySearchFilter(allProducts, searchText);
-            var filteredByBrand = ApplyBrandFilter(filteredBySearch, activeBrand);
+            var filteredByPrice = ApplyPriceFilter(filteredBySearch, minimumPrice, maximumPrice);
+            var filteredByBrand = ApplyBrandFilter(filteredByPrice, activeBrand);
             var filteredByRating = ApplyRatingFilter(filteredByBrand, minimumRating);
 
             return ApplyCategoryFilter(filteredByRating, categoryId);
@@ -28,12 +29,13 @@ namespace DataTechnologies.Services
                 .ToList();
         }
 
-        public Dictionary<int, int> GetCategoryProductCounts(string searchText, string activeBrand, int? minimumRating)
+        public Dictionary<int, int> GetCategoryProductCounts(string searchText, string activeBrand, int? minimumRating, float? minimumPrice, float? maximumPrice)
         {
             var categories = GetCategories();
             var productCategories = _productRepository.GetProductCategories();
             var searchFilteredProducts = ApplySearchFilter(_productRepository.GetAvailableProducts(), searchText);
-            var brandFilteredProducts = ApplyBrandFilter(searchFilteredProducts, activeBrand);
+            var priceFilteredProducts = ApplyPriceFilter(searchFilteredProducts, minimumPrice, maximumPrice);
+            var brandFilteredProducts = ApplyBrandFilter(priceFilteredProducts, activeBrand);
             var ratingFilteredProducts = ApplyRatingFilter(brandFilteredProducts, minimumRating);
             var productIds = ratingFilteredProducts.Select(p => p.ProductID).ToHashSet();
             var counts = new Dictionary<int, int>();
@@ -46,10 +48,11 @@ namespace DataTechnologies.Services
             return counts;
         }
 
-        public List<string> GetBrands(int? categoryId, string searchText, int? minimumRating)
+        public List<string> GetBrands(int? categoryId, string searchText, int? minimumRating, float? minimumPrice, float? maximumPrice)
         {
             var searchFilteredProducts = ApplySearchFilter(_productRepository.GetAvailableProducts(), searchText);
-            var ratingFilteredProducts = ApplyRatingFilter(searchFilteredProducts, minimumRating);
+            var priceFilteredProducts = ApplyPriceFilter(searchFilteredProducts, minimumPrice, maximumPrice);
+            var ratingFilteredProducts = ApplyRatingFilter(priceFilteredProducts, minimumRating);
             var categoryFilteredProducts = ApplyCategoryFilter(ratingFilteredProducts, categoryId);
 
             return categoryFilteredProducts
@@ -60,10 +63,11 @@ namespace DataTechnologies.Services
                 .ToList();
         }
 
-        public Dictionary<string, int> GetBrandProductCounts(int? categoryId, string searchText, int? minimumRating)
+        public Dictionary<string, int> GetBrandProductCounts(int? categoryId, string searchText, int? minimumRating, float? minimumPrice, float? maximumPrice)
         {
             var searchFilteredProducts = ApplySearchFilter(_productRepository.GetAvailableProducts(), searchText);
-            var ratingFilteredProducts = ApplyRatingFilter(searchFilteredProducts, minimumRating);
+            var priceFilteredProducts = ApplyPriceFilter(searchFilteredProducts, minimumPrice, maximumPrice);
+            var ratingFilteredProducts = ApplyRatingFilter(priceFilteredProducts, minimumRating);
             var categoryFilteredProducts = ApplyCategoryFilter(ratingFilteredProducts, categoryId);
 
             return categoryFilteredProducts
@@ -112,6 +116,14 @@ namespace DataTechnologies.Services
 
             return products
                 .Where(p => averageRatings.TryGetValue(p.ProductID, out var rating) && rating >= minimumRating.Value)
+                .ToList();
+        }
+
+        private static List<Product> ApplyPriceFilter(List<Product> products, float? minimumPrice, float? maximumPrice)
+        {
+            return products
+                .Where(p => (!minimumPrice.HasValue || p.Price >= minimumPrice.Value)
+                            && (!maximumPrice.HasValue || p.Price <= maximumPrice.Value))
                 .ToList();
         }
 
