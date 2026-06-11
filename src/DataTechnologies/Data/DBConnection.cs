@@ -1,4 +1,6 @@
 using System.Data;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using Npgsql;
 
 namespace DataTechnologies.Data
@@ -40,6 +42,34 @@ namespace DataTechnologies.Data
                 createCmd.CommandText = $"CREATE DATABASE \"{targetDatabase}\"";
                 createCmd.ExecuteNonQuery();
             }
+        }
+
+        public static IMongoDatabase CreateMongoDatabase()
+        {
+            var mongoConnectionString = ResolveMongoConnectionString();
+            var mongoUrl = new MongoUrl(mongoConnectionString);
+            var resolvedDatabaseName = string.IsNullOrWhiteSpace(mongoUrl.DatabaseName)
+                ? "team5"
+                : mongoUrl.DatabaseName;
+
+            var mongoClient = new MongoClient(mongoConnectionString);
+            return mongoClient.GetDatabase(resolvedDatabaseName);
+        }
+
+        public static void TestMongoConnection()
+        {
+            CreateMongoDatabase().RunCommand<BsonDocument>(new BsonDocument("ping", 1));
+        }
+
+        private static string ResolveMongoConnectionString()
+        {
+            var value = Environment.GetEnvironmentVariable("MONGODB_URI");
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new InvalidOperationException("MONGODB_URI was not found. Ensure .env is present or set the environment variable.");
+            }
+
+            return value;
         }
     }
 }

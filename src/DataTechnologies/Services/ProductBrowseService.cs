@@ -11,11 +11,6 @@ namespace DataTechnologies.Services
             _productRepository = productRepository;
         }
 
-        public List<Product> GetAvailableProducts()
-        {
-            return _productRepository.GetAll();
-        }
-
         public List<Product> GetFilteredProducts(int? categoryId, string activeBrand, int? minimumRating, string searchText)
         {
             var allProducts = _productRepository.GetAvailableProducts();
