@@ -13,7 +13,7 @@ namespace DataTechnologies.Services
 
         public List<Product> GetAvailableProducts()
         {
-            return _productRepository.GetAll();
+            return _productRepository.GetAvailableProducts();
         }
 
         public List<Product> GetFilteredProducts(int? categoryId, string activeBrand, int? minimumRating, string searchText)

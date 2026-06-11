@@ -12,17 +12,17 @@ namespace ProductTests
     public class ProductBrowseServiceAdditionalTests
     {
         [Fact]
-        public void GetAvailableProducts_ReturnsAllFromRepository()
+        public void GetAvailableProducts_ReturnsAvailableFromRepository()
         {
             var mockRepo = new Mock<IProductRepository>();
-            var all = MockProductData.GetProducts();
-            mockRepo.Setup(r => r.GetAll()).Returns(all);
+            var available = MockProductData.GetProducts().Where(p => p.Stock > 0).ToList();
+            mockRepo.Setup(r => r.GetAvailableProducts()).Returns(available);
 
             var service = new ProductBrowseService(mockRepo.Object);
 
             var results = service.GetAvailableProducts();
 
-            Assert.Equal(all.Count, results.Count);
+            Assert.Equal(available.Count, results.Count);
         }
 
         [Fact]
