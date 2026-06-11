@@ -15,6 +15,8 @@ namespace DataTechnologies.UI
 
         public const string ShowAvailableProducts = "Show available products";
         public const string Account = "Account";
+        public const string PopularCategories = "Populaire categorieën";
+        public const string GraphVisualization = "Graph visualisatie";
 
         public const string RegisterUser = "Register user";
         public const string UpdateUser = "Update user";
@@ -52,6 +54,8 @@ namespace DataTechnologies.UI
             return new[]
             {
                 ShowAvailableProducts,
+                PopularCategories,
+                GraphVisualization,
                 Account,
                 Back
             };

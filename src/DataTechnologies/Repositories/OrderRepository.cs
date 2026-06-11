@@ -31,6 +31,26 @@ namespace DataTechnologies.Repositories
             return (int)cmd.ExecuteScalar()!;
         }
 
+        public void AddOrderItems(int orderId, IEnumerable<OrderItems> items)
+        {
+            const string sql = @"
+                INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase)
+                VALUES (@OrderID, @ProductID, @Quantity, @PriceAtPurchase);";
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            foreach (var item in items)
+            {
+                using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("OrderID", orderId);
+                cmd.Parameters.AddWithValue("ProductID", item.ProductID);
+                cmd.Parameters.AddWithValue("Quantity", item.Quantity);
+                cmd.Parameters.AddWithValue("PriceAtPurchase", item.PriceAtPurchase);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         public Orders? GetById(int orderId)
         {
             const string sql = "SELECT * FROM Orders WHERE OrderID = @Id;";

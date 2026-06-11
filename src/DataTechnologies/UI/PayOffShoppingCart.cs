@@ -1,3 +1,4 @@
+using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using Microsoft.VisualBasic;
@@ -8,19 +9,27 @@ using System.Data;
 public class PayOffShoppingCart
 {
 
-    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartService shoppingCartService, EmailService emailService)
+    public PayOffShoppingCart(
+        UserService userService,
+        AddressService addressService,
+        OrderRepository orderRepository,
+        ShoppingCartService shoppingCartService,
+        EmailService emailService,
+        CategoryAnalyticsService? categoryAnalyticsService = null)
     {
         _userService = userService;
         _addressService = addressService;
         _orderRepository = orderRepository;
         _shoppingCartService = shoppingCartService;
         _emailService = emailService;
+        _categoryAnalyticsService = categoryAnalyticsService;
     }
     private readonly UserService _userService;
     private readonly AddressService _addressService;
     private readonly OrderRepository _orderRepository;
     private readonly ShoppingCartService _shoppingCartService;
     private readonly EmailService _emailService;
+    private readonly CategoryAnalyticsService? _categoryAnalyticsService;
 
 
     public bool CheckAccountExistanc(int UserID)
@@ -256,9 +265,11 @@ public class PayOffShoppingCart
                 TotalAmount = (float)totalAmount
             };
 
-            _orderRepository.Add(order);
+            var orderId = _orderRepository.Add(order);
 
             var emailProducts = new List<(string ProductName, int Quantity, decimal Price)>();
+            var orderItems = new List<OrderItems>();
+            var graphLineItems = new List<OrderLineItem>();
             decimal emailSubtotaal = 0;
             if (cartId != null)
             {
@@ -268,13 +279,54 @@ public class PayOffShoppingCart
                     while (emailReader.Read())
                     {
                         string pName = emailReader["name"].ToString() ?? "";
+                        int productId = Convert.ToInt32(emailReader["productid"]);
                         int qty = Convert.ToInt32(emailReader["quantity"]);
                         decimal prc = Convert.ToDecimal(emailReader["price"]);
                         emailProducts.Add((pName, qty, prc));
+                        orderItems.Add(new OrderItems
+                        {
+                            OrderID = orderId,
+                            ProductID = productId,
+                            Quantity = qty,
+                            PriceAtPurchase = (float)prc
+                        });
+                        graphLineItems.Add(new OrderLineItem
+                        {
+                            ProductId = productId,
+                            ProductName = pName,
+                            Quantity = qty,
+                            Price = (float)prc
+                        });
                     }
                     emailReader.Dispose();
                 }
                 emailSubtotaal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
+
+                if (orderItems.Count > 0)
+                {
+                    _orderRepository.AddOrderItems(orderId, orderItems);
+                }
+            }
+
+            if (_categoryAnalyticsService != null && graphLineItems.Count > 0)
+            {
+                var customer = _userService.GetUserById(UserID);
+                if (customer != null)
+                {
+                    try
+                    {
+                        _categoryAnalyticsService.RecordOrderInGraphAsync(
+                            orderId,
+                            orderNumber,
+                            customer,
+                            order.TotalAmount,
+                            graphLineItems).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        AnsiConsole.MarkupLine($"[yellow]Graph-relaties konden niet worden aangemaakt: {Markup.Escape(ex.Message)}[/]");
+                    }
+                }
             }
 
             decimal emailBtw = emailSubtotaal * 0.21m;

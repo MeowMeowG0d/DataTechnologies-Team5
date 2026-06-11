@@ -91,35 +91,47 @@ while (!shouldExit)
 
 				var demoOption = AppMenuView.ShowDemoMenu();
 
+				if (demoOption == MenuOptions.Back)
+				{
+					break;
+				}
+
+				Env.Load();
+				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+				var dbConnection = new DBConnection(demoDatabaseName);
+				var connectionString = dbConnection.GetConnection().ConnectionString;
+
+				var neo4jUri = Env.GetString("NEO4J_URI");
+				var neo4jUser = Env.GetString("NEO4J_USER");
+				var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
+				await using var driver = GraphDatabase.Driver(neo4jUri, AuthTokens.Basic(neo4jUser, neo4jPassword));
+
+				try
+				{
+					await driver.VerifyConnectivityAsync();
+				}
+				catch (Exception ex)
+				{
+					AnsiConsole.MarkupLine("[red]CRITICAL ERROR: Could not connect to the Neo4j database.[/]");
+					AnsiConsole.MarkupLine($"[red]Details: {Markup.Escape(ex.Message)}[/]");
+					break;
+				}
+
+				var repo = new ProductRepository(connectionString);
+				var graphRepository = new CategoryGraphRepository(driver);
+				var categoryAnalyticsService = new CategoryAnalyticsService(graphRepository, repo);
+
+				try
+				{
+					await categoryAnalyticsService.SyncCatalogToGraphAsync();
+				}
+				catch (Exception ex)
+				{
+					AnsiConsole.MarkupLine($"[yellow]Catalogus synchronisatie mislukt: {Markup.Escape(ex.Message)}[/]");
+				}
+
 				if (demoOption == MenuOptions.ShowAvailableProducts)
 				{
-					Env.Load();
-					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
-					var dbConnection = new DBConnection(demoDatabaseName);
-					var connectionString = dbConnection.GetConnection().ConnectionString;
-
-					//neo4j
-					var neo4jUri = Env.GetString("NEO4J_URI");
-					var neo4jUser = Env.GetString("NEO4J_USER");
-					var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
-					await using var driver = GraphDatabase.Driver(neo4jUri, AuthTokens.Basic(neo4jUser, neo4jPassword));
-
-					//verify connection
-					try
-					{
-						await driver.VerifyConnectivityAsync();
-					}
-					catch (Exception ex)
-					{
-						Console.WriteLine("CRITICAL ERROR: Could not connect to the Neo4j database.");
-						Console.WriteLine($"Details: {ex.Message}");
-
-						Console.WriteLine("\nPress any key to exit...");
-						Console.ReadKey();
-						return;
-					}
-
-					var repo = new ProductRepository(connectionString);
 					var service = new ProductBrowseService(repo);
 					var shoppingCartService = new ShoppingCartService(dbConnection);
 
@@ -135,16 +147,28 @@ while (!shouldExit)
 						fromEmail: "MythicRS@gmail.com",
 						fromPassword: "evei fycr tunu yckh"
 					);
-					var payOff = new PayOffShoppingCart(userService, addressService, orderRepo, shoppingCartService, emailService);
+					var payOff = new PayOffShoppingCart(
+						userService,
+						addressService,
+						orderRepo,
+						shoppingCartService,
+						emailService,
+						categoryAnalyticsService);
 
 					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService, userService, payOff, addressService, session);
 					productOverviewScreen.ShowAvailableProducts();
 				}
-
+				else if (demoOption == MenuOptions.PopularCategories)
+				{
+					await CategoryAnalyticsScreen.ShowPopularCategoriesAsync(categoryAnalyticsService);
+				}
+				else if (demoOption == MenuOptions.GraphVisualization)
+				{
+					await CategoryAnalyticsScreen.ShowGraphVisualizationAsync(categoryAnalyticsService);
+				}
 				else if (demoOption == MenuOptions.Account)
 				{
-					var dbConnection = new DBConnection();
-					var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+					var userRepo = new UserRepository(connectionString);
 					var userService = new UserService(userRepo, new PasswordHasher());
 
 					UserMenu.ShowUserDemo(userService, session);
