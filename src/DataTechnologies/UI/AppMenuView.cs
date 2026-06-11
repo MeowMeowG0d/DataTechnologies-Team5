@@ -54,7 +54,6 @@ namespace DataTechnologies.UI
             {
                 ShowAvailableProducts,
                 PopularCategories,
-                GraphVisualization,
                 Account,
                 Back
             };

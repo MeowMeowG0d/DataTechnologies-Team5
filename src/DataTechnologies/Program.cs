@@ -162,10 +162,6 @@ while (!shouldExit)
 				{
 					await CategoryAnalyticsScreen.ShowPopularCategoriesAsync(categoryAnalyticsService);
 				}
-				else if (demoOption == MenuOptions.GraphVisualization)
-				{
-					await CategoryAnalyticsScreen.ShowGraphVisualizationAsync(categoryAnalyticsService);
-				}
 				else if (demoOption == MenuOptions.Account)
 				{
 					var userRepo = new UserRepository(connectionString);
