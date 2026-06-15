@@ -53,6 +53,22 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
         return userRepository.Update(user);
     }
 
+    public bool ResetPassword(string email, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email cannot be empty.");
+        if (string.IsNullOrWhiteSpace(newPassword))
+            throw new ArgumentException("Password cannot be empty.");
+        if (newPassword.Length < 8)
+            throw new ArgumentException("Password must be at least 8 characters long.");
+
+        var existingUser = userRepository.GetByEmail(email)
+            ?? throw new InvalidOperationException("No user found with this email address.");
+
+        existingUser.PasswordHash = passwordHasher.HashPassword(newPassword);
+        return userRepository.Update(existingUser);
+    }
+
     public bool Authenticate(string email, string password)
     {
         if (string.IsNullOrWhiteSpace(email))

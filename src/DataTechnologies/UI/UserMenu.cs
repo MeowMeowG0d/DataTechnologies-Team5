@@ -24,6 +24,43 @@ public static class UserMenu
         }
     }
 
+    public static void HandleForgotPassword(UserService userService)
+    {
+        var email = AnsiConsole.Ask<string>("Enter your email to reset your password:");
+
+        if (userService.GetUserByEmail(email) == null)
+        {
+            AnsiConsole.MarkupLine("[red]No account found with this email address.[/]");
+            return;
+        }
+
+        AnsiConsole.MarkupLine("[green]Account found. You can now set a new password.[/]");
+
+        var newPassword = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter new password (min. 8 characters):")
+                .PromptStyle("red")
+                .Secret()
+                .Validate(p => p.Length >= 8
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Password must be at least 8 characters long.[/]")));
+
+        var confirmPassword = AnsiConsole.Prompt(
+            new TextPrompt<string>("Confirm new password:")
+                .PromptStyle("red")
+                .Secret());
+
+        if (newPassword != confirmPassword)
+        {
+            AnsiConsole.MarkupLine("[red]Passwords do not match. Password was not reset.[/]");
+            return;
+        }
+
+        if (userService.ResetPassword(email, newPassword))
+            AnsiConsole.MarkupLine("[green]Password reset successfully! You can now log in with your new password.[/]");
+        else
+            AnsiConsole.MarkupLine("[red]Failed to reset password.[/]");
+    }
+
     public static void ShowUserDemo(UserService userService, AppSession session)
     {
         var userOption = AppMenuView.ShowAccountMenu(session);
@@ -64,6 +101,10 @@ public static class UserMenu
             }
             else
                 AnsiConsole.MarkupLine("[red]Login failed. Invalid email or password.[/]");
+        }
+        else if (userOption == MenuOptions.ForgotPassword)
+        {
+            HandleForgotPassword(userService);
         }
         else if (userOption == MenuOptions.UpdateUser)
         {

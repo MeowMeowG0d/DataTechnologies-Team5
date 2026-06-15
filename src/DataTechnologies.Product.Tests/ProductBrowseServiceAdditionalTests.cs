@@ -49,7 +49,7 @@ namespace ProductTests
 
             var service = new ProductBrowseService(mockRepo.Object);
 
-            var counts = service.GetCategoryProductCounts(searchText: "", activeBrand: "", minimumRating: null);
+            var counts = service.GetCategoryProductCounts(searchText: "", activeBrand: "", minimumRating: null, minimumPrice: null, maximumPrice: null);
 
             Assert.Equal(2, counts[1]); // Phones category should have 2 products available
             Assert.Equal(1, counts[2]); // Audio category should have 1 product available
@@ -65,7 +65,7 @@ namespace ProductTests
 
             var service = new ProductBrowseService(mockRepo.Object);
 
-            var brandCounts = service.GetBrandProductCounts(categoryId: null, searchText: "", minimumRating: null);
+            var brandCounts = service.GetBrandProductCounts(categoryId: null, searchText: "", minimumRating: null, minimumPrice: null, maximumPrice: null);
 
             Assert.Equal(1, brandCounts["BrandA"]);
             Assert.Equal(1, brandCounts["BrandB"]);
@@ -83,10 +83,10 @@ namespace ProductTests
 
             var service = new ProductBrowseService(mockRepo.Object);
 
-            var searchResults = service.GetFilteredProducts(categoryId: null, activeBrand: "", minimumRating: null, searchText: "phone");
+            var searchResults = service.GetFilteredProducts(categoryId: null, activeBrand: "", minimumRating: null, searchText: "phone", minimumPrice: null, maximumPrice: null);
             Assert.True(searchResults.All(p => p.Name.ToLower().Contains("phone") || p.Description.ToLower().Contains("phone") || p.Brand.ToLower().Contains("phone") || p.Specification.ToLower().Contains("phone")));
 
-            var highRated = service.GetFilteredProducts(categoryId: null, activeBrand: "", minimumRating: 5, searchText: "");
+            var highRated = service.GetFilteredProducts(categoryId: null, activeBrand: "", minimumRating: 5, searchText: "", minimumPrice: null, maximumPrice: null);
             Assert.All(highRated, p => Assert.True(p.ProductID == 4));
         }
     }
