@@ -11,13 +11,13 @@ namespace DataTechnologies.UI
         private const string Checkout = "Afrekenen";
         private const string ChangeCart = "Pas winkelwagen aan";
         private const string BackToMenu = "Terug naar producten";
-        private readonly ShoppingCartService _shoppingCartService;
+        private readonly ShoppingCartServiceRedis _shoppingCartService;
         private readonly AddressService _addressService;
         private readonly PayOffShoppingCart _payOffShoppingCart;
         private readonly UserService _userService;
         private readonly int _userId;
 
-        public ShoppingCartScreen(ShoppingCartService shoppingCartService, int userId, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService)
+        public ShoppingCartScreen(ShoppingCartServiceRedis shoppingCartService, int userId, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService)
         {
             _shoppingCartService = shoppingCartService;
             _userId = userId;
@@ -32,18 +32,10 @@ namespace DataTechnologies.UI
             AnsiConsole.Write(new Spectre.Console.Rule("[yellow]Je Winkelwagen[/]"));
             AnsiConsole.WriteLine();
 
-            int? cartId = _shoppingCartService.GetCartIdByUserId(_userId);
+            // Directly fetch items from Redis via User ID (Cart ID concept is gone)
+            var items = _shoppingCartService.GetAllProductsFromCart(_userId);
 
-            if (cartId == null)
-            {
-                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
-                PromptActions();
-                return;
-            }
-
-            var itemsReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
-
-            if (itemsReader == null)
+            if (items == null || items.Count == 0)
             {
                 AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
                 PromptActions();
@@ -58,40 +50,24 @@ namespace DataTechnologies.UI
                 .AddColumn("Prijs per stuk")
                 .AddColumn("Subtotaal");
 
-            bool hasItems = false;
-
-            while (itemsReader.Read())
+            foreach (var item in items)
             {
-                int quantity = Convert.ToInt32(itemsReader["quantity"]);
-                if (quantity <= 0) continue;
+                if (item.Quantity <= 0) continue;
 
-                hasItems = true;
-                string productId = itemsReader["productid"].ToString() ?? "";
-                string productName = itemsReader["name"].ToString() ?? "";
-                decimal price = Convert.ToDecimal(itemsReader["price"]);
-                decimal rowSubtotal = quantity * price;
+                decimal rowSubtotal = item.Quantity * item.Price;
 
                 table.AddRow(
-                    productId,
-                    productName,
-                    quantity.ToString(),
-                    $"EUR {price:0.00}",
+                    item.ProductId.ToString(),
+                    item.ProductName,
+                    item.Quantity.ToString(),
+                    $"EUR {item.Price:0.00}",
                     $"EUR {rowSubtotal:0.00}");
-            }
-
-            itemsReader.Dispose();
-
-            if (!hasItems)
-            {
-                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
-                PromptActions();
-                return;
             }
 
             AnsiConsole.Write(table);
 
-            decimal subtotal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
-            decimal totalIncBTWAndShipping = _shoppingCartService.CalculateTotalPrice(cartId.Value);
+            decimal subtotal = _shoppingCartService.CalculateSubTotalPrice(_userId);
+            decimal totalIncBTWAndShipping = _shoppingCartService.CalculateTotalPrice(_userId);
             decimal calculatedBTW = subtotal - (subtotal / 1.21m);
 
             var summaryTable = new Table()
@@ -114,46 +90,17 @@ namespace DataTechnologies.UI
 
         public void ChangeCartScreen()
         {
-            //empty cart safety check
-            int? cartId = _shoppingCartService.GetCartIdByUserId(_userId);
-            if (cartId == null)
-            {
-                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
-                System.Threading.Thread.Sleep(1500); 
-                return;
-            }
-
-            // Fetch current items once
-            var items = new List<CartItemFullInfo>();
-            var itemsReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
-            if (itemsReader != null)
-            {
-                while (itemsReader.Read())
+            var items = _shoppingCartService.GetAllProductsFromCart(_userId);
+                
+                if (items == null || items.Count == 0)
                 {
-                    //if quan 0 skip
-                    int quantity = Convert.ToInt32(itemsReader["quantity"]);
-                    if (quantity <= 0) continue;
-                    
-                    items.Add(new CartItemFullInfo {
-                        ProductId = Convert.ToInt32(itemsReader["productid"]),
-                        ProductName = itemsReader["name"].ToString() ?? "",
-                        Quantity = quantity,
-                        Price = Convert.ToDecimal(itemsReader["price"])
-                    });
+                    AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
+                    System.Threading.Thread.Sleep(1500); 
+                    return;
                 }
-                itemsReader.Dispose();
-            }
 
-            //empty cart safety check
-            if (items.Count == 0)
-            {
-                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
-                System.Threading.Thread.Sleep(1500);
-                return; 
-            }
-
-            int selectedIndex = 0;
-            bool editingCart = true;
+                int selectedIndex = 0;
+                bool editingCart = true;
             
             while (editingCart)
             {
