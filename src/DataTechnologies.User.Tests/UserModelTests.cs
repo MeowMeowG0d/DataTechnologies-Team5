@@ -14,6 +14,38 @@ namespace UserTests
         };
 
         [Fact]
+        public void Create_SetsAllRequiredFields()
+        {
+            var user = new User
+            {
+                UserId = 5,
+                Email = "user@example.com",
+                PasswordHash = "hashed-password",
+                Name = "Jane Doe",
+                EmailVerified = true
+            };
+
+            Assert.Equal(5, user.UserId);
+            Assert.Equal("user@example.com", user.Email);
+            Assert.Equal("hashed-password", user.PasswordHash);
+            Assert.Equal("Jane Doe", user.Name);
+            Assert.True(user.EmailVerified);
+        }
+
+        [Fact]
+        public void Create_EmailVerified_DefaultsToFalse()
+        {
+            var user = new User
+            {
+                Email = "user@example.com",
+                PasswordHash = "hashed-password",
+                Name = "Jane Doe"
+            };
+
+            Assert.False(user.EmailVerified);
+        }
+
+        [Fact]
         public void ToString_ContainsIdEmailAndName()
         {
             var user = CreateUser(id: 3, email: "a@b.com", name: "Alice");
