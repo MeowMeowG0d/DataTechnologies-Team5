@@ -1,16 +1,24 @@
-using System.Security.Authentication;
+using System.ComponentModel.DataAnnotations;
 
 public class Addresses
 {
     public int AddresID { get; set; }
     public int UserID { get; set; }
-    public string Street { get; set; }
-    public string Number { get; set; }
 
-    public string Postcode { get; set; }
-    public string city { get; set; }
-    
-    public string Country { get; set; }
+    [Required]
+    public string Street { get; set; } = string.Empty;
 
-    public string Type { get; set; }
+    [Required]
+    public string Number { get; set; } = string.Empty;
+
+    [Required]
+    public string Postcode { get; set; } = string.Empty;
+
+    [Required]
+    public string city { get; set; } = string.Empty;
+
+    [Required]
+    public string Country { get; set; } = string.Empty;
+
+    public string Type { get; set; } = string.Empty;
 }
