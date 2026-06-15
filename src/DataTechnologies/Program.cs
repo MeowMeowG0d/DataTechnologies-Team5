@@ -62,7 +62,8 @@ while (!shouldExit)
 		case MenuOptions.ForgotPassword:
 			try
 			{
-				var dbConnection = new DBConnection();
+				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+				var dbConnection = new DBConnection(demoDatabaseName);
 				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 				var userService = new UserService(userRepo, new PasswordHasher());
 				UserMenu.HandleForgotPassword(userService);
