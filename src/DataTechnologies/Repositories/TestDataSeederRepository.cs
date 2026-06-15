@@ -22,16 +22,6 @@ namespace DataTechnologies.Repositories
                 (2, 'Elektronica')
                 ON CONFLICT (CategoryID) DO NOTHING;
 
-                INSERT INTO ShoppingCarts (CartID, UserID) VALUES 
-                (1, 1),
-                (2, 2)
-                ON CONFLICT (CartID) DO NOTHING;
-
-                INSERT INTO CartItems (CartItemID, CartID, ProductID, Quantity) VALUES 
-                (1, 1, 1, 1),
-                (2, 2, 2, 2)
-                ON CONFLICT (CartItemID) DO NOTHING;
-
                 INSERT INTO Addresses (AddresID, UserID, Street, Number, Postcode, city, Country, Type) VALUES 
                 (1, 1, 'Kerkstraat', '10A', '1012AB', 'Amsterdam', 'Nederland', 'Thuis'),
                 (2, 2, 'Molenweg', '5', '3011CD', 'Rotterdam', 'Nederland', 'Werk')
