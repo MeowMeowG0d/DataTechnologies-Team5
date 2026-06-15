@@ -205,6 +205,11 @@ while (!shouldExit)
 					DBConnection.TestMongoConnection();
 					AnsiConsole.MarkupLine("[green]MongoDB connection successful![/]");
 				}
+				else if (testOption == MenuOptions.Neo4jDatabase)
+				{
+					await DBConnection.TestNeo4jConnectionAsync();
+					AnsiConsole.MarkupLine("[green]Neo4j connection successful![/]");
+				}
 			}
 			catch (Exception ex)
 			{

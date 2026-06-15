@@ -2,6 +2,7 @@ using System.Data;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Npgsql;
+using Neo4j.Driver;
 
 namespace DataTechnologies.Data
 {
@@ -70,6 +71,19 @@ namespace DataTechnologies.Data
             }
 
             return value;
+        }
+
+        public static async Task TestNeo4jConnectionAsync()
+        {
+            var uri      = Environment.GetEnvironmentVariable("NEO4J_URI");
+            var user     = Environment.GetEnvironmentVariable("NEO4J_USER");
+            var password = Environment.GetEnvironmentVariable("NEO4J_PASSWORD");
+
+            if (string.IsNullOrWhiteSpace(uri) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
+                throw new InvalidOperationException("NEO4J_URI, NEO4J_USER or NEO4J_PASSWORD was not found. Ensure .env is present or set the environment variables.");
+
+            await using var driver = GraphDatabase.Driver(uri, AuthTokens.Basic(user, password));
+            await driver.VerifyConnectivityAsync();
         }
     }
 }

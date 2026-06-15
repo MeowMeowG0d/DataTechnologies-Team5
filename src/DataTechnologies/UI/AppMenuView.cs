@@ -9,6 +9,7 @@ namespace DataTechnologies.UI
         public const string TestDatabaseConnection = "Test Database Connection";
         public const string PostgreSqlDatabase = "PostgreSQL";
         public const string MongoDbDatabase = "MongoDB";
+        public const string Neo4jDatabase = "Neo4j";
         public const string InitializeDatabaseTables = "Initialize Database Tables";
         public const string InsertTestData = "Insert Test Data";
         public const string Exit = "Exit";
@@ -87,6 +88,7 @@ namespace DataTechnologies.UI
             {
                 PostgreSqlDatabase,
                 MongoDbDatabase,
+                Neo4jDatabase,
                 Back
             };
         }
