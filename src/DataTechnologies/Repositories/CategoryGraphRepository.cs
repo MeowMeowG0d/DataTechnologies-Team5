@@ -110,12 +110,18 @@ public class CategoryGraphRepository : ICategoryGraphRepository
                     SET p.name = $productName
                     MERGE (o)-[contains:CONTAINS]->(p)
                     SET contains.quantity = $quantity, contains.price = $price
-                    WITH cust, p, $quantity AS qty
+                    WITH cust, o, p, $quantity AS qty
                     MATCH (p)-[:IN_CATEGORY]->(c:Category)
+                    MERGE (o)-[:RELATES_TO]->(c)
                     MERGE (cust)-[purchased:PURCHASED]->(c)
-                    ON CREATE SET purchased.quantity = qty, purchased.orderCount = 1
+                    ON CREATE SET purchased.quantity = qty,
+                                purchased.orderCount = 1,
+                                purchased.lastOrderId = $orderId,
+                                purchased.lastOrderNumber = $orderNumber
                     ON MATCH SET purchased.quantity = purchased.quantity + qty,
-                                  purchased.orderCount = purchased.orderCount + 1
+                                purchased.orderCount = purchased.orderCount + 1,
+                                purchased.lastOrderId = $orderId,
+                                purchased.lastOrderNumber = $orderNumber
                     """,
                     new
                     {
@@ -124,7 +130,8 @@ public class CategoryGraphRepository : ICategoryGraphRepository
                         productId = item.ProductId,
                         productName = item.ProductName,
                         quantity = item.Quantity,
-                        price = item.Price
+                        price = item.Price,
+                        orderNumber
                     });
             }
         });
@@ -137,10 +144,12 @@ public class CategoryGraphRepository : ICategoryGraphRepository
         {
             var cursor = await tx.RunAsync(
                 """
-                MATCH (c:Category)<-[:IN_CATEGORY]-(p:Product)<-[contains:CONTAINS]-(:Order)
+                MATCH (c:Category)<-[:IN_CATEGORY]-(p:Product)<-[contains:CONTAINS]-(o:Order)<-[:PLACED]-(cust:Customer)
                 RETURN c.categoryId AS categoryId,
-                       c.name AS categoryName,
-                       sum(contains.quantity) AS purchaseCount
+                    c.name AS categoryName,
+                    sum(contains.quantity) AS purchaseCount,
+                    count(DISTINCT o) AS orderCount,
+                    count(DISTINCT cust) AS uniqueCustomers
                 ORDER BY purchaseCount DESC
                 LIMIT $limit
                 """,
@@ -153,7 +162,9 @@ public class CategoryGraphRepository : ICategoryGraphRepository
                 {
                     CategoryId = record["categoryId"].As<int>(),
                     CategoryName = record["categoryName"].As<string>(),
-                    PurchaseCount = record["purchaseCount"].As<int>()
+                    PurchaseCount = record["purchaseCount"].As<int>(),
+                    OrderCount = record["orderCount"].As<int>(),
+                    UniqueCustomers = record["uniqueCustomers"].As<int>()
                 });
             }
 
