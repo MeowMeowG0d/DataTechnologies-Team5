@@ -96,6 +96,7 @@ while (!shouldExit)
 					Env.Load();
 					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
 					var dbConnection = new DBConnection(demoDatabaseName);
+					var redisConnection = new RedisConnection();
 					var connectionString = dbConnection.GetConnection().ConnectionString;
 
 					//neo4j
@@ -121,7 +122,7 @@ while (!shouldExit)
 
 					var repo = new ProductRepository(connectionString);
 					var service = new ProductBrowseService(repo);
-					var shoppingCartService = new ShoppingCartService(dbConnection);
+					var shoppingCartService = new ShoppingCartServiceRedis(redisConnection);
 
 					var userRepo = new UserRepository(connectionString);
 					var userService = new UserService(userRepo, new PasswordHasher());

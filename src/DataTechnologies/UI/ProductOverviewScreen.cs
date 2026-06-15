@@ -18,13 +18,13 @@ public class ProductOverviewScreen
     private const string AllRatings = "Alle ratings";
     private const string AllPrices = "Alle prijzen";
     private readonly ProductBrowseService _productBrowseService;
-    private readonly ShoppingCartService _shoppingCartService;
+    private readonly ShoppingCartServiceRedis _shoppingCartService;
     private readonly UserService _userService;
     private readonly PayOffShoppingCart _payOffShoppingCart;
     private readonly AddressService _addressService;
     private readonly AppSession _session;
 
-    public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartService shoppingCartService, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService, AppSession session)
+    public ProductOverviewScreen(ProductBrowseService productBrowseService, ShoppingCartServiceRedis shoppingCartService, UserService userService, PayOffShoppingCart payOffShoppingCart, AddressService addressService, AppSession session)
     {
         _productBrowseService = productBrowseService;
         _shoppingCartService = shoppingCartService;
@@ -210,7 +210,7 @@ public class ProductOverviewScreen
         }
     }
 
-    private void HandleProductDetails(Product selectedProduct)
+private void HandleProductDetails(Product selectedProduct)
     {
         while (true)
         {
@@ -234,7 +234,16 @@ public class ProductOverviewScreen
                 }
                 else
                 {
-                    _shoppingCartService.AddItemToCart(selectedProduct.ProductID, _session.UserId);
+                    // FIX: Create a CartItemFullInfo item container payload so Redis can save product details instantly
+                    var cartItem = new CartItemFullInfo
+                    {
+                        ProductId = selectedProduct.ProductID,
+                        ProductName = selectedProduct.Name,
+                        Price = (decimal)selectedProduct.Price,
+                        Quantity = 1 // Defaults to 1 item added
+                    };
+
+                    _shoppingCartService.AddItemToCart(cartItem, _session.UserId);
                     AnsiConsole.MarkupLine($"[green]✓ {selectedProduct.Name} succesvol toegevoegd aan de winkelwagen![/]");
                 }
                 AnsiConsole.WriteLine("Druk op een knop om door te gaan...");
