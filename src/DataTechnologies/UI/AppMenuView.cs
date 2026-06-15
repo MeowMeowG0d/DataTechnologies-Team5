@@ -29,11 +29,12 @@ namespace DataTechnologies.UI
 
         public const string Login = "Login";
         public const string Logout = "Logout";
+        public const string ForgotPassword = "Forgot password";
 
         public static IReadOnlyList<string> GetMainMenuOptions(AppSession session)
         {
             if (!session.IsLoggedIn)
-                return new[] { Login, RegisterUser, InitializeDatabaseTables, InsertTestData, Exit };
+                return new[] { Login, RegisterUser, ForgotPassword, InitializeDatabaseTables, InsertTestData, Exit };
 
             return new[]
             {
@@ -60,7 +61,7 @@ namespace DataTechnologies.UI
         public static IReadOnlyList<string> GetAccountMenuOptions(AppSession session)
         {
             if (!session.IsLoggedIn)
-                return new[] { Login, RegisterUser, Back };
+                return new[] { Login, RegisterUser, ForgotPassword, Back };
 
             return new[] { MyOrders, UpdateUser, DeleteUser, ShowAllUsers, Logout, Back };
         }
