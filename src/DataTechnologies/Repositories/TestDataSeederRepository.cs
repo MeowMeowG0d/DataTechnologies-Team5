@@ -8,8 +8,8 @@ namespace DataTechnologies.Repositories
         {
             var insertTestDataSql = @"
                 INSERT INTO Users (UserId, Email, PasswordHash, Name, EmailVerified) VALUES 
-                (1, 'jan.jansen@voorbeeld.nl', '$2a$12$aL2NXiRmVc5T.35zgfWp3OvbNAdWqILGoLNY7hYU.7iQA9BOzbU0O', 'Jan Jansen', TRUE),
-                (2, 'lisa.smit@voorbeeld.nl', '$2a$12$aL2NXiRmVc5T.35zgfWp3OvbNAdWqILGoLNY7hYU.7iQA9BOzbU0O', 'Lisa Smit', FALSE)
+                (1, 'jan.jansen@voorbeeld.nl', '600000.dl/TDLGKBeEgd9dBd7HDdA==.oQfXiAXsS4CMf+ZPuFxpr3ufHGyfcGR6WLv1igaqOmk=', 'Jan Jansen', TRUE),
+                (2, 'lisa.smit@voorbeeld.nl', '600000.dl/TDLGKBeEgd9dBd7HDdA==.oQfXiAXsS4CMf+ZPuFxpr3ufHGyfcGR6WLv1igaqOmk=', 'Lisa Smit', FALSE)
                 ON CONFLICT (UserId) DO NOTHING;
 
                 INSERT INTO Product (ProductID, Name, Brand, Description, Price, Stock, Specification) VALUES 
