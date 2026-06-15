@@ -3,7 +3,7 @@ using DataTechnologies.Models;
 
 namespace DataTechnologies.Services;
 
-public class UserService(UserRepository userRepository, IPasswordHasher passwordHasher)
+public class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher)
 {
     public int AddUser(User user)
     {
