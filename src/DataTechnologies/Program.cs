@@ -48,7 +48,8 @@ while (!shouldExit)
 		case MenuOptions.Login:
 			try
 			{
-				var dbConnection = new DBConnection();
+				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+				var dbConnection = new DBConnection(demoDatabaseName);
 				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 				var userService = new UserService(userRepo, new PasswordHasher());
 				UserMenu.HandleLogin(userService, session);
@@ -66,7 +67,8 @@ while (!shouldExit)
 		case MenuOptions.RegisterUser:
 			try
 			{
-				var dbConnection = new DBConnection();
+				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+				var dbConnection = new DBConnection(demoDatabaseName);
 				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 				var userService = new UserService(userRepo, new PasswordHasher());
 
@@ -144,7 +146,8 @@ while (!shouldExit)
 
 				else if (demoOption == MenuOptions.Account)
 				{
-					var dbConnection = new DBConnection();
+					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+					var dbConnection = new DBConnection(demoDatabaseName);
 					var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 					var userService = new UserService(userRepo, new PasswordHasher());
 
