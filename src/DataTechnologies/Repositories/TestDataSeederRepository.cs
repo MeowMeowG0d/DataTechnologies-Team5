@@ -8,8 +8,8 @@ namespace DataTechnologies.Repositories
         {
             var insertTestDataSql = @"
                 INSERT INTO Users (UserId, Email, PasswordHash, Name, EmailVerified) VALUES 
-                (1, 'jan.jansen@voorbeeld.nl', '$2a$12$aL2NXiRmVc5T.35zgfWp3OvbNAdWqILGoLNY7hYU.7iQA9BOzbU0O', 'Jan Jansen', TRUE),
-                (2, 'lisa.smit@voorbeeld.nl', '$2a$12$aL2NXiRmVc5T.35zgfWp3OvbNAdWqILGoLNY7hYU.7iQA9BOzbU0O', 'Lisa Smit', FALSE)
+                (1, 'jan.jansen@voorbeeld.nl', '600000.dl/TDLGKBeEgd9dBd7HDdA==.oQfXiAXsS4CMf+ZPuFxpr3ufHGyfcGR6WLv1igaqOmk=', 'Jan Jansen', TRUE),
+                (2, 'lisa.smit@voorbeeld.nl', '600000.dl/TDLGKBeEgd9dBd7HDdA==.oQfXiAXsS4CMf+ZPuFxpr3ufHGyfcGR6WLv1igaqOmk=', 'Lisa Smit', FALSE)
                 ON CONFLICT (UserId) DO NOTHING;
 
                 INSERT INTO Product (ProductID, Name, Brand, Description, Price, Stock, Specification) VALUES 
@@ -21,16 +21,6 @@ namespace DataTechnologies.Repositories
                 (1, 'Vervoersmiddelen'),
                 (2, 'Elektronica')
                 ON CONFLICT (CategoryID) DO NOTHING;
-
-                INSERT INTO ShoppingCarts (CartID, UserID) VALUES 
-                (1, 1),
-                (2, 2)
-                ON CONFLICT (CartID) DO NOTHING;
-
-                INSERT INTO CartItems (CartItemID, CartID, ProductID, Quantity) VALUES 
-                (1, 1, 1, 1),
-                (2, 2, 2, 2)
-                ON CONFLICT (CartItemID) DO NOTHING;
 
                 INSERT INTO Addresses (AddresID, UserID, Street, Number, Postcode, city, Country, Type) VALUES 
                 (1, 1, 'Kerkstraat', '10A', '1012AB', 'Amsterdam', 'Nederland', 'Thuis'),

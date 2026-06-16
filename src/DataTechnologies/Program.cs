@@ -48,7 +48,8 @@ while (!shouldExit)
 		case MenuOptions.Login:
 			try
 			{
-				var dbConnection = new DBConnection();
+				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+				var dbConnection = new DBConnection(demoDatabaseName);
 				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 				var userService = new UserService(userRepo, new PasswordHasher());
 				UserMenu.HandleLogin(userService, session);
@@ -58,6 +59,21 @@ while (!shouldExit)
 				AnsiConsole.MarkupLine($"[red]Login failed: {ex.Message}[/]");
 			}
 			break;
+		case MenuOptions.ForgotPassword:
+			try
+			{
+				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+				var dbConnection = new DBConnection(demoDatabaseName);
+				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+				var userService = new UserService(userRepo, new PasswordHasher());
+				UserMenu.HandleForgotPassword(userService);
+			}
+			catch (Exception ex)
+			{
+				AnsiConsole.MarkupLine($"[red]Password reset failed: {ex.Message}[/]");
+			}
+			break;
+
 		case MenuOptions.Logout:
 			session.Logout();
 			AnsiConsole.MarkupLine("[yellow]You have been logged out.[/]");
@@ -66,7 +82,8 @@ while (!shouldExit)
 		case MenuOptions.RegisterUser:
 			try
 			{
-				var dbConnection = new DBConnection();
+				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+				var dbConnection = new DBConnection(demoDatabaseName);
 				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 				var userService = new UserService(userRepo, new PasswordHasher());
 
@@ -144,7 +161,8 @@ while (!shouldExit)
 
 				else if (demoOption == MenuOptions.Account)
 				{
-					var dbConnection = new DBConnection();
+					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
+					var dbConnection = new DBConnection(demoDatabaseName);
 					var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 					var userService = new UserService(userRepo, new PasswordHasher());
 

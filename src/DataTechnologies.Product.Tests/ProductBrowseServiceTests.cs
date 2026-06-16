@@ -21,7 +21,7 @@ namespace ProductTests
 
             var service = new ProductBrowseService(mockRepo.Object);
 
-            var results = service.GetFilteredProducts(categoryId: 1, activeBrand: "BrandA", minimumRating: 4, searchText: "Phone");
+            var results = service.GetFilteredProducts(categoryId: 1, activeBrand: "BrandA", minimumRating: 4, searchText: "Phone", minimumPrice: null, maximumPrice: null);
 
             Assert.NotNull(results);
             Assert.Contains(results, p => p.ProductID == 1);
@@ -38,7 +38,7 @@ namespace ProductTests
 
             var service = new ProductBrowseService(mockRepo.Object);
 
-            var brands = service.GetBrands(categoryId: null, searchText: "", minimumRating: null);
+            var brands = service.GetBrands(categoryId: null, searchText: "", minimumRating: null, minimumPrice: null, maximumPrice: null);
 
             Assert.Contains("BrandA", brands);
             Assert.Contains("BrandB", brands);
