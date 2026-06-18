@@ -91,17 +91,17 @@ namespace DataTechnologies.UI
         public void ChangeCartScreen()
         {
             var items = _shoppingCartService.GetAllProductsFromCart(_userId);
-                
-                if (items == null || items.Count == 0)
-                {
-                    AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
-                    System.Threading.Thread.Sleep(1500); 
-                    return;
-                }
 
-                int selectedIndex = 0;
-                bool editingCart = true;
-            
+            if (items == null || items.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            int selectedIndex = 0;
+            bool editingCart = true;
+
             while (editingCart)
             {
                 if (selectedIndex >= items.Count) selectedIndex = items.Count - 1;
@@ -226,7 +226,13 @@ namespace DataTechnologies.UI
                 else
                 {
                     var user = _userService.GetUserById(_userId);
-                    _payOffShoppingCart.DeliveryDetails(_userId, user.Name, user.Email, totalAmount);
+
+                    if (user == null)
+                    {
+                        AnsiConsole.MarkupLine("[red]User niet gevonden. Log opnieuw in.[/]");
+                        PromptActions(true, totalAmount);
+                        return;
+                    }
                 }
             }
             if (action == ChangeCart)

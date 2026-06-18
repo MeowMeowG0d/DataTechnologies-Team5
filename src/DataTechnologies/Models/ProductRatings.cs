@@ -6,6 +6,6 @@ public class ProductRatings
     public int UserID {get; set; }
     public int Rating {get; set; }
     
-    public string ReviewText {get; set; }
+    public string ReviewText {get; set; } = string.Empty;
     public DateTime CreatedAt {get; set; }
 }

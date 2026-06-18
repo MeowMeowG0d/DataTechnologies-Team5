@@ -115,6 +115,12 @@ public class PayOffShoppingCart
         _addressService.SaveAddress(UserID, address, number, postcode, city, country, type);
         var newAddress = _addressService.GetAddressByUserId(UserID);
 
+        if (newAddress == null)
+        {
+            AnsiConsole.MarkupLine("[red]Geen adres gevonden. Bestelling kan niet doorgaan.[/]");
+            return;
+        }
+
         AnsiConsole.MarkupLine("[green]Adres opgeslagen![/]");
         AnsiConsole.MarkupLine($"[grey]Straat:[/] {address} {number}");
         AnsiConsole.MarkupLine($"[grey]Postcode:[/] {postcode.ToUpper()}");
