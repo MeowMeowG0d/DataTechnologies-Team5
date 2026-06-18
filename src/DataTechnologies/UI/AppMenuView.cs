@@ -11,6 +11,7 @@ namespace DataTechnologies.UI
         public const string MongoDbDatabase = "MongoDB";
         public const string InitializeDatabaseTables = "Initialize Database Tables";
         public const string InsertTestData = "Insert Test Data";
+        public const string BackupDatabases = "Backup databases";
         public const string Exit = "Exit";
 
         public const string ShowAvailableProducts = "Show available products";
@@ -34,7 +35,7 @@ namespace DataTechnologies.UI
         public static IReadOnlyList<string> GetMainMenuOptions(AppSession session)
         {
             if (!session.IsLoggedIn)
-                return new[] { Login, RegisterUser, ForgotPassword, InitializeDatabaseTables, InsertTestData, Exit };
+                return new[] { Login, RegisterUser, ForgotPassword, InitializeDatabaseTables, InsertTestData, BackupDatabases, Exit };
 
             return new[]
             {
@@ -43,6 +44,7 @@ namespace DataTechnologies.UI
                 TestDatabaseConnection,
                 InitializeDatabaseTables,
                 InsertTestData,
+                BackupDatabases,
                 Logout,
                 Exit
             };

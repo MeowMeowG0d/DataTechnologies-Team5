@@ -37,6 +37,17 @@ namespace UserTests
         }
 
         [Theory]
+        [InlineData("test")]
+        [InlineData("test@")]
+        [InlineData("test@domain")]
+        [InlineData("test domain@example.com")]
+        public void AddUser_InvalidEmailFormat_ThrowsArgumentException(string email)
+        {
+            var ex = Assert.Throws<ArgumentException>(() => _service.AddUser(CreateUser(email: email)));
+            Assert.Contains("Email format is invalid", ex.Message);
+        }
+
+        [Theory]
         [InlineData("")]
         [InlineData("   ")]
         public void AddUser_EmptyPassword_ThrowsArgumentException(string password)
@@ -52,11 +63,32 @@ namespace UserTests
             Assert.Throws<ArgumentException>(() => _service.AddUser(CreateUser(name: name)));
         }
 
+        [Theory]
+        [InlineData("1")]
+        [InlineData("John123")]
+        [InlineData("@invalid")]
+        public void AddUser_InvalidNameFormat_ThrowsArgumentException(string name)
+        {
+            var ex = Assert.Throws<ArgumentException>(() => _service.AddUser(CreateUser(name: name)));
+            Assert.Contains("Name format is invalid", ex.Message);
+        }
+
         [Fact]
         public void AddUser_PasswordShorterThanEightCharacters_ThrowsArgumentException()
         {
             var ex = Assert.Throws<ArgumentException>(() => _service.AddUser(CreateUser(password: "short")));
-            Assert.Contains("at least 8 characters", ex.Message);
+            Assert.Contains("8-64 characters", ex.Message);
+        }
+
+        [Theory]
+        [InlineData("password123")]
+        [InlineData("PASSWORD123")]
+        [InlineData("Password")]
+        [InlineData("Password 123")]
+        public void AddUser_InvalidPasswordSyntax_ThrowsArgumentException(string password)
+        {
+            var ex = Assert.Throws<ArgumentException>(() => _service.AddUser(CreateUser(password: password)));
+            Assert.Contains("include at least one uppercase letter", ex.Message);
         }
 
         [Fact]
@@ -165,6 +197,24 @@ namespace UserTests
         }
 
         [Theory]
+        [InlineData("password123")]
+        [InlineData("PASSWORD123")]
+        [InlineData("Password")]
+        [InlineData("Password 123")]
+        public void UpdateUser_InvalidNewPassword_ThrowsArgumentException(string newPassword)
+        {
+            var existing = CreateUser(id: 1, password: "existing-hash");
+            _repo.Setup(r => r.GetById(1)).Returns(existing);
+            _repo.Setup(r => r.GetByEmail("test@example.com")).Returns(existing);
+
+            var update = CreateUser(id: 1, password: newPassword);
+
+            var ex = Assert.Throws<ArgumentException>(() => _service.UpdateUser(update));
+            Assert.Contains("include at least one uppercase letter", ex.Message);
+            _hasher.Verify(h => h.HashPassword(It.IsAny<string>()), Times.Never);
+        }
+
+        [Theory]
         [InlineData("", "Password123")]
         [InlineData("test@example.com", "")]
         public void Authenticate_EmptyInput_ThrowsArgumentException(string email, string password)
@@ -221,6 +271,15 @@ namespace UserTests
         public void GetUserByEmail_EmptyEmail_ThrowsArgumentException(string email)
         {
             Assert.Throws<ArgumentException>(() => _service.GetUserByEmail(email));
+        }
+
+        [Theory]
+        [InlineData("invalid")]
+        [InlineData("user@")]
+        public void GetUserByEmail_InvalidEmailFormat_ThrowsArgumentException(string email)
+        {
+            var ex = Assert.Throws<ArgumentException>(() => _service.GetUserByEmail(email));
+            Assert.Contains("Email format is invalid", ex.Message);
         }
 
         [Fact]
