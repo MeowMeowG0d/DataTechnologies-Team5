@@ -2,9 +2,9 @@ using System.Data;
 
 namespace DataTechnologies.Repositories
 {
-    public class TestDataSeederRepository
+    public static class TestDataSeederRepository
     {
-        public void SeedTestData(IDbConnection connection)
+        public static void SeedTestData(IDbConnection connection)
         {
             var insertTestDataSql = @"
                 INSERT INTO Users (UserId, Email, PasswordHash, Name, EmailVerified) VALUES 

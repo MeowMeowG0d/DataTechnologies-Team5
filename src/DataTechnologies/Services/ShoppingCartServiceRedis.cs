@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
 using DataTechnologies.Data;
+using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 
 namespace DataTechnologies.Services
@@ -11,11 +10,13 @@ namespace DataTechnologies.Services
 
         public ShoppingCartServiceRedis(IShoppingCartRepository repository)
         {
+            ArgumentNullException.ThrowIfNull(repository);
             _repository = repository;
         }
 
         public ShoppingCartServiceRedis(RedisConnection redisConnection)
         {
+            ArgumentNullException.ThrowIfNull(redisConnection);
             _repository = new ShoppingCartRepositoryRedis(redisConnection);
         }
 
@@ -25,9 +26,7 @@ namespace DataTechnologies.Services
 
             decimal total = 0;
             foreach (var item in items)
-            {
                 total += item.Price * item.Quantity;
-            }
 
             return Math.Round(total, 2);
         }
@@ -41,7 +40,7 @@ namespace DataTechnologies.Services
         public void AddItemToCart(CartItemFullInfo item, int userId)
             => _repository.AddOrUpdateItemInCart(userId, item);
 
-        public List<CartItemFullInfo> GetAllProductsFromCart(int userId)
+        public IReadOnlyCollection<CartItemFullInfo> GetAllProductsFromCart(int userId)  // CA1002
             => _repository.GetAllProductsFromCart(userId);
 
         public void UpdateCartItemQuantity(int productId, int userId, int newQuantity)

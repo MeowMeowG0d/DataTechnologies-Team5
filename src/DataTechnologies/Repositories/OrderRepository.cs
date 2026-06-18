@@ -22,7 +22,8 @@ namespace DataTechnologies.Repositories
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
             using var cmd = new NpgsqlCommand(sql, conn);
-
+            
+            ArgumentNullException.ThrowIfNull(order);
             cmd.Parameters.AddWithValue("OrderNumber", order.OrderNumber);
             cmd.Parameters.AddWithValue("UserID", order.UserID);
             cmd.Parameters.AddWithValue("PaymentMethod", order.PaymentMethod);
@@ -45,7 +46,7 @@ namespace DataTechnologies.Repositories
             return reader.Read() ? MapOrder(reader) : null;
         }
 
-        public List<Orders> GetByUserId(int userId)
+        public IReadOnlyCollection<Orders> GetByUserId(int userId)
         {
             const string sql = "SELECT * FROM Orders WHERE UserID = @UserID;";
             var orders = new List<Orders>();
@@ -109,6 +110,7 @@ namespace DataTechnologies.Repositories
 
         public void AddOrderLines(int orderId, IEnumerable<OrderLine> lines)
         {
+            
             const string sql = @"
         INSERT INTO OrderLines (OrderID, ProductID, Quantity, UnitPrice)
         VALUES (@OrderID, @ProductID, @Quantity, @UnitPrice);";
@@ -116,6 +118,7 @@ namespace DataTechnologies.Repositories
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
 
+            ArgumentNullException.ThrowIfNull(lines);
             foreach (var line in lines)
             {
                 using var cmd = new NpgsqlCommand(sql, conn);
@@ -127,7 +130,7 @@ namespace DataTechnologies.Repositories
             }
         }
 
-        public List<OrderLine> GetOrderLines(int orderId)
+        public IReadOnlyCollection<OrderLine> GetOrderLines(int orderId)
         {
             const string sql = "SELECT * FROM OrderLines WHERE OrderID = @OrderID;";
             var lines = new List<OrderLine>();

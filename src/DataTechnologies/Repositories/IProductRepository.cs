@@ -7,11 +7,11 @@ namespace DataTechnologies.Repositories
     {
         int Add(Product product);
         Product? GetById(int productId);
-        List<Product> GetAll();
-        List<Product> GetAvailableProducts();
-        List<Categories> GetCategories();
-        List<ProductCategories> GetProductCategories();
-        List<ProductRatings> GetProductRatings();
+        IReadOnlyCollection<Product> GetAll();
+        IReadOnlyCollection<Product> GetAvailableProducts();
+        IReadOnlyCollection<Categories> GetCategories();
+        IReadOnlyCollection<ProductCategories> GetProductCategories();
+        IReadOnlyCollection<ProductRatings> GetProductRatings();
         bool Update(Product product);
         bool Delete(int productId);
     }

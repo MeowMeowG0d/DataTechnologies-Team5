@@ -1,3 +1,4 @@
+namespace DataTechnologies.Models;
 public class DiscountCodes
 {
     public int CodeID { get; set; }

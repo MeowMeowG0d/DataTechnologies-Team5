@@ -1,3 +1,5 @@
+namespace DataTechnologies.Models;
+
 public class OrderStatusHistory
 {
     public int StatusID {get; set; }

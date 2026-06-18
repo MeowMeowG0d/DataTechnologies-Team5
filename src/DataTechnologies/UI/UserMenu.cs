@@ -2,6 +2,7 @@ using Spectre.Console;
 using DataTechnologies.Models;
 using DataTechnologies.Services;
 using DataTechnologies.Repositories;
+using System.Globalization;
 
 namespace DataTechnologies.UI;
 
@@ -9,6 +10,9 @@ public static class UserMenu
 {
     public static void HandleLogin(UserService userService, AppSession session)
     {
+        ArgumentNullException.ThrowIfNull(userService);
+        ArgumentNullException.ThrowIfNull(session);
+
         var email = AnsiConsole.Ask<string>("Enter email:");
         var password = AnsiConsole.Prompt(
             new TextPrompt<string>("Enter password:").PromptStyle("red").Secret());
@@ -27,6 +31,7 @@ public static class UserMenu
 
     public static void HandleForgotPassword(UserService userService)
     {
+        ArgumentNullException.ThrowIfNull(userService);
         var email = AnsiConsole.Ask<string>("Enter your email to reset your password:");
 
         if (userService.GetUserByEmail(email) == null)
@@ -71,6 +76,13 @@ public static class UserMenu
         PayOffShoppingCart payOffShoppingCart,
         AddressService addressService)
     {
+        ArgumentNullException.ThrowIfNull(userService);
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(orderRepository);
+        ArgumentNullException.ThrowIfNull(productRepository);
+        ArgumentNullException.ThrowIfNull(cartService);
+        ArgumentNullException.ThrowIfNull(payOffShoppingCart);
+        ArgumentNullException.ThrowIfNull(addressService);
         var userOption = AppMenuView.ShowAccountMenu(session);
 
         if (userOption == MenuOptions.RegisterUser)
@@ -172,7 +184,7 @@ public static class UserMenu
                 else
                     AnsiConsole.MarkupLine("[red]Failed to delete user. User may not exist.[/]");
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
             }
@@ -201,7 +213,7 @@ public static class UserMenu
 
                 foreach (var order in orders)
                     ordersTable.AddRow(
-                        order.OrderID.ToString(),
+                        order.OrderID.ToString(CultureInfo.InvariantCulture),
                         order.OrderNumber,
                         order.PaymentMethod,
                         order.OrderStatus,
@@ -231,8 +243,9 @@ public static class UserMenu
                     var product = productRepository.GetById(line.ProductID);
                     detailTable.AddRow(
                         product?.Name ?? $"Product #{line.ProductID}",
-                        line.Quantity.ToString(),
-                        $"€{line.UnitPrice:F2}");
+                        line.Quantity.ToString(CultureInfo.InvariantCulture),
+                        $"€{line.UnitPrice:F2}"
+                    );
                 }
 
                 AnsiConsole.Write(detailTable);
@@ -287,14 +300,14 @@ public static class UserMenu
                     }
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 AnsiConsole.MarkupLine($"[red]Error loading orders: {ex.Message}[/]");
             }
         }
     }
 
-    private static void DisplayUsers(List<User> users)
+    private static void DisplayUsers(IReadOnlyCollection<User> users)
     {
         var usersTable = new Table()
             .RoundedBorder()
@@ -304,7 +317,12 @@ public static class UserMenu
             .AddColumn("Verified");
 
         foreach (var user in users)
-            usersTable.AddRow(user.UserId.ToString(), user.Email, user.Name, user.EmailVerified.ToString());
+            usersTable.AddRow(
+            user.UserId.ToString(CultureInfo.InvariantCulture),
+            user.Email,
+            user.Name,
+            user.EmailVerified.ToString()
+        );
 
         AnsiConsole.Write(usersTable);
     }

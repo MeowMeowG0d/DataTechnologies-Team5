@@ -7,7 +7,7 @@ namespace DataTechnologies.Repositories
     {
         void AddOrUpdateItemInCart(int userId, CartItemFullInfo item);
 
-        List<CartItemFullInfo> GetAllProductsFromCart(int userId);
+        IReadOnlyCollection<CartItemFullInfo> GetAllProductsFromCart(int userId);
 
         void UpdateCartItemQuantity(int userId, int productId, int newQuantity);
 

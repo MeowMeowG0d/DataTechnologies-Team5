@@ -1,3 +1,5 @@
+namespace DataTechnologies.Models;
+
 public class ProductCategories
 {
     public int ProductID { get; set; }

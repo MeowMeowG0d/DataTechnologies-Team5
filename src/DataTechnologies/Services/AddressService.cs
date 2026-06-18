@@ -1,7 +1,9 @@
 using DataTechnologies.Data;
 using DataTechnologies.Repositories;
-
+using DataTechnologies.Models;
+using System.Globalization;
 namespace DataTechnologies.Services;
+
 
 public class AddressService
 {
@@ -25,7 +27,7 @@ public class AddressService
             UserID   = userId,
             Street   = street,
             Number   = number,
-            Postcode = postcode.ToUpper(),
+            Postcode = postcode.ToUpper(CultureInfo.InvariantCulture),
             city     = city,
             Country  = country,
             Type     = type ?? string.Empty

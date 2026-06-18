@@ -1,6 +1,10 @@
+using System;
+using System.Globalization;
 using DataTechnologies.Services;
+using DataTechnologies.Models;
 using Spectre.Console;
 
+namespace DataTechnologies.UI;
 public class OrderConfirmationScreen
 {
     private readonly ShoppingCartServiceRedis _shoppingCartService;
@@ -12,6 +16,8 @@ public class OrderConfirmationScreen
 
     public void Show(string orderNumber, string name, string emailAddress, Addresses address, string paymentMethod, int userId)
     {
+        ArgumentNullException.ThrowIfNull(address);
+
         AnsiConsole.Clear();
         AnsiConsole.Write(new Spectre.Console.Rule("[green]BEVESTIGING BESTELLING[/]"));
         AnsiConsole.WriteLine();
@@ -25,7 +31,7 @@ public class OrderConfirmationScreen
         AnsiConsole.MarkupLine("[green]───────────────────────────────────[/]");
         AnsiConsole.MarkupLine("[grey]Leveringsadres:[/]");
         AnsiConsole.MarkupLine($"  {address.Street} {address.Number}");
-        AnsiConsole.MarkupLine($"  {address.Postcode.ToUpper()}  {address.city}");
+        AnsiConsole.MarkupLine($"  {address.Postcode.ToUpper(CultureInfo.InvariantCulture)}  {address.city}");
         AnsiConsole.MarkupLine($"  {address.Country}");
         AnsiConsole.MarkupLine($"  {address.Type}");
 
@@ -38,11 +44,8 @@ public class OrderConfirmationScreen
         AnsiConsole.MarkupLine("[grey]Bestelde producten:[/]");
         AnsiConsole.WriteLine();
 
-        // Fetch natively from Redis using the userId (instead of SQL cartId checks)
         var items = _shoppingCartService.GetAllProductsFromCart(userId);
 
-        // Note: If you cleared the cart right before calling this screen, 'items' will be empty.
-        // If that happens, update your calling method to pass the list here as a parameter!
         if (items != null && items.Count > 0)
         {
             var productTable = new Table()
@@ -58,7 +61,7 @@ public class OrderConfirmationScreen
 
                 productTable.AddRow(
                     item.ProductName,
-                    item.Quantity.ToString(),
+                    item.Quantity.ToString(CultureInfo.InvariantCulture),
                     $"EUR {item.Price:0.00}",
                     $"EUR {rowSubtotal:0.00}");
             }
@@ -92,7 +95,7 @@ public class OrderConfirmationScreen
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[green]───────────────────────────────────[/]");
         DateTime verwachteLevertijd = DateTime.Now.AddDays(3);
-        AnsiConsole.MarkupLine($"[grey]Verwachte levertijd:[/] [bold]{verwachteLevertijd:dddd d MMMM yyyy}[/]");
+        AnsiConsole.MarkupLine($"[grey]Verwachte levertijd:[/] [bold]{verwachteLevertijd.ToString("dddd d MMMM yyyy", CultureInfo.CurrentCulture)}[/]");
 
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[green]═══════════════════════════════════[/]");

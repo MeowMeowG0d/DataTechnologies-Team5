@@ -9,6 +9,6 @@ public interface IUserRepository
     bool Delete(int userId);
     User? GetById(int userId);
     User? GetByEmail(string email);
-    List<User> GetAll();
-    List<Orders> GetPreviousOrders(int userId);
+    IReadOnlyCollection<User> GetAll();
+    IReadOnlyCollection<Orders> GetPreviousOrders(int userId);
 }

@@ -7,6 +7,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 {
     public int AddUser(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         if (string.IsNullOrWhiteSpace(user.Email))
             throw new ArgumentException("Email cannot be empty.");
         if (string.IsNullOrWhiteSpace(user.PasswordHash))
@@ -34,6 +35,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
     public bool UpdateUser(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         if (user.UserId <= 0)
             throw new ArgumentException("Invalid user ID.");
         if (string.IsNullOrWhiteSpace(user.Email))
@@ -95,12 +97,12 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
         return userRepository.GetByEmail(email);
     }
-    public List<User> GetAllUsers()
+    public IReadOnlyCollection<User> GetAllUsers()
     {
         return userRepository.GetAll();
     }
 
-    public List<Orders> GetPreviousOrders(int userId)
+    public IReadOnlyCollection<Orders> GetPreviousOrders(int userId)
     {
         if (userId <= 0)
             throw new ArgumentException("Invalid user ID.");

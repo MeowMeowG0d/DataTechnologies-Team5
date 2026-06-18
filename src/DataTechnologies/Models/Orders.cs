@@ -1,3 +1,5 @@
+namespace DataTechnologies.Models;
+
 public class Orders
 {
     public int OrderID { get; set; }

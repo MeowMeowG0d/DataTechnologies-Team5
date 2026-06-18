@@ -1,3 +1,4 @@
+namespace DataTechnologies.Models;
 public class ProductRatings
 {
     public int RatingID {get; set; }

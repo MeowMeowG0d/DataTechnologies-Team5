@@ -3,6 +3,7 @@ using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using StackExchange.Redis;
 using System.Text.Json;
+using System.Globalization;
 
 namespace DataTechnologies.Repositories
 {
@@ -12,15 +13,17 @@ namespace DataTechnologies.Repositories
 
         public ShoppingCartRepositoryRedis(RedisConnection redisConnection)
         {
+            ArgumentNullException.ThrowIfNull(redisConnection);
             _db = redisConnection.GetDatabase();
         }
 
-        private string GetCartKey(int userId) => $"cart:{userId}";
+        private static string GetCartKey(int userId) => $"cart:{userId}";
 
         public void AddOrUpdateItemInCart(int userId, CartItemFullInfo item)
         {
+            ArgumentNullException.ThrowIfNull(item);
             string key = GetCartKey(userId);
-            string field = item.ProductId.ToString();
+            string field = item.ProductId.ToString(CultureInfo.InvariantCulture);
 
             RedisValue existingValue = _db.HashGet(key, field);
 
@@ -38,7 +41,7 @@ namespace DataTechnologies.Repositories
             _db.HashSet(key, field, jsonValue);
         }
 
-        public List<CartItemFullInfo> GetAllProductsFromCart(int userId)
+        public IReadOnlyCollection<CartItemFullInfo> GetAllProductsFromCart(int userId)
         {
             string key = GetCartKey(userId);
 
@@ -57,8 +60,9 @@ namespace DataTechnologies.Repositories
 
         public void UpdateCartItemQuantity(int userId, int productId, int newQuantity)
         {
+
             string key = GetCartKey(userId);
-            string field = productId.ToString();
+            string field = productId.ToString(CultureInfo.InvariantCulture);
 
             if (newQuantity <= 0)
             {
