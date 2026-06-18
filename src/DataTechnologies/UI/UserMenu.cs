@@ -1,6 +1,7 @@
 using Spectre.Console;
 using DataTechnologies.Models;
 using DataTechnologies.Services;
+using DataTechnologies.Repositories;
 
 namespace DataTechnologies.UI;
 
@@ -61,7 +62,14 @@ public static class UserMenu
             AnsiConsole.MarkupLine("[red]Failed to reset password.[/]");
     }
 
-    public static void ShowUserDemo(UserService userService, AppSession session)
+    public static void ShowUserDemo(
+        UserService userService,
+        AppSession session,
+        OrderRepository orderRepository,
+        ProductRepository productRepository,
+        ShoppingCartServiceRedis cartService,
+        PayOffShoppingCart payOffShoppingCart,
+        AddressService addressService)
     {
         var userOption = AppMenuView.ShowAccountMenu(session);
 
@@ -201,6 +209,83 @@ public static class UserMenu
                     );
 
                 AnsiConsole.Write(ordersTable);
+
+                var orderId = AnsiConsole.Ask<int>("Enter Order ID to view details (or 0 to go back):");
+                if (orderId == 0) return;
+
+                var lines = orderRepository.GetOrderLines(orderId);
+                if (lines.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No product details found for this order.[/]");
+                    return;
+                }
+
+                var detailTable = new Table()
+                    .RoundedBorder()
+                    .AddColumn("Product")
+                    .AddColumn("Quantity")
+                    .AddColumn("Unit Price");
+
+                foreach (var line in lines)
+                {
+                    var product = productRepository.GetById(line.ProductID);
+                    detailTable.AddRow(
+                        product?.Name ?? $"Product #{line.ProductID}",
+                        line.Quantity.ToString(),
+                        $"€{line.UnitPrice:F2}");
+                }
+
+                AnsiConsole.Write(detailTable);
+
+                var reorder = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Opnieuw bestellen?")
+                        .AddChoices("Opnieuw bestellen", "Terug"));
+
+                if (reorder == "Opnieuw bestellen")
+                {
+                    var unavailable = new List<string>();
+                    var addedCount = 0;
+
+                    foreach (var line in lines)
+                    {
+                        var product = productRepository.GetById(line.ProductID);
+
+                        if (product is null || product.Stock <= 0)
+                        {
+                            unavailable.Add(product?.Name ?? $"Product #{line.ProductID}");
+                            continue;
+                        }
+
+                        cartService.AddItemToCart(new CartItemFullInfo
+                        {
+                            ProductId = product.ProductID,
+                            ProductName = product.Name,
+                            Price = (decimal)product.Price,
+                            Quantity = line.Quantity
+                        }, session.UserId);
+                    }
+
+                    if (unavailable.Count > 0)
+                    {
+                        AnsiConsole.MarkupLine("[red]De volgende producten zijn niet meer beschikbaar:[/]");
+                        foreach (var name in unavailable)
+                            AnsiConsole.MarkupLine($"[red]- {name}[/]");
+                    }
+
+                    AnsiConsole.MarkupLine($"[green]product(en) toegevoegd aan de winkelwagen.[/]");
+
+                    AnsiConsole.MarkupLine($"[green]{addedCount} product(en) toegevoegd aan de winkelwagen.[/]");
+
+                    if (unavailable.Count == 0 || addedCount > 0)
+                    {
+                        AnsiConsole.MarkupLine("[grey]Druk op een toets om naar de winkelwagen te gaan...[/]");
+                        Console.ReadKey(true);
+
+                        var cartScreen = new ShoppingCartScreen(cartService, session.UserId, userService, payOffShoppingCart, addressService);
+                        cartScreen.ShowCartOverview();
+                    }
+                }
             }
             catch (Exception ex)
             {

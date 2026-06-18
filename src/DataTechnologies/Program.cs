@@ -59,6 +59,7 @@ while (!shouldExit)
 				AnsiConsole.MarkupLine($"[red]Login failed: {ex.Message}[/]");
 			}
 			break;
+
 		case MenuOptions.ForgotPassword:
 			try
 			{
@@ -116,13 +117,12 @@ while (!shouldExit)
 					var redisConnection = new RedisConnection();
 					var connectionString = dbConnection.GetConnection().ConnectionString;
 
-					//neo4j
+					// Neo4j
 					var neo4jUri = Env.GetString("NEO4J_URI");
 					var neo4jUser = Env.GetString("NEO4J_USER");
 					var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
 					await using var driver = GraphDatabase.Driver(neo4jUri, AuthTokens.Basic(neo4jUser, neo4jPassword));
 
-					//verify connection
 					try
 					{
 						await driver.VerifyConnectivityAsync();
@@ -131,15 +131,15 @@ while (!shouldExit)
 					{
 						Console.WriteLine("CRITICAL ERROR: Could not connect to the Neo4j database.");
 						Console.WriteLine($"Details: {ex.Message}");
-
-						Console.WriteLine("\nPress any key to exit...");
 						Console.ReadKey();
 						return;
 					}
 
 					var repo = new ProductRepository(connectionString);
 					var service = new ProductBrowseService(repo);
-					var shoppingCartService = new ShoppingCartServiceRedis(redisConnection);
+
+					var cartRepository = new ShoppingCartRepositoryRedis(redisConnection);
+					var shoppingCartService = new ShoppingCartServiceRedis(cartRepository);
 
 					var userRepo = new UserRepository(connectionString);
 					var userService = new UserService(userRepo, new PasswordHasher());
@@ -147,34 +147,84 @@ while (!shouldExit)
 					var addressService = new AddressService(dbConnection);
 
 					var orderRepo = new OrderRepository(connectionString);
+
 					var emailService = new EmailService(
 						smtpHost: "smtp.gmail.com",
 						smtpPort: 587,
 						fromEmail: "MythicRS@gmail.com",
 						fromPassword: "evei fycr tunu yckh"
 					);
-					var payOff = new PayOffShoppingCart(userService, addressService, orderRepo, shoppingCartService, emailService);
 
-					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService, userService, payOff, addressService, session);
+					var payOff = new PayOffShoppingCart(
+						userService,
+						addressService,
+						orderRepo,
+						shoppingCartService,
+						emailService
+					);
+
+					var productOverviewScreen = new ProductOverviewScreen(
+						service,
+						shoppingCartService,
+						userService,
+						payOff,
+						addressService,
+						session
+					);
+
 					productOverviewScreen.ShowAvailableProducts();
 				}
-
 				else if (demoOption == MenuOptions.Account)
 				{
 					var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
 					var dbConnection = new DBConnection(demoDatabaseName);
-					var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
+					var connectionString = dbConnection.GetConnection().ConnectionString;
+
+					var userRepo = new UserRepository(connectionString);
 					var userService = new UserService(userRepo, new PasswordHasher());
 
-					UserMenu.ShowUserDemo(userService, session);
-				}
+					var orderRepository = new OrderRepository(connectionString);
+					var productRepository = new ProductRepository(connectionString);
 
+					var redisConnection = new RedisConnection();
+
+					var cartRepository = new ShoppingCartRepositoryRedis(redisConnection);
+					var cartService = new ShoppingCartServiceRedis(cartRepository);
+
+					var addressService = new AddressService(dbConnection);
+
+					var emailService = new EmailService(
+						smtpHost: "smtp.gmail.com",
+						smtpPort: 587,
+						fromEmail: "MythicRS@gmail.com",
+						fromPassword: "evei fycr tunu yckh"
+					);
+
+					var payOffShoppingCart = new PayOffShoppingCart(
+						userService,
+						addressService,
+						orderRepository,
+						cartService,
+						emailService
+					);
+
+					UserMenu.ShowUserDemo(
+						userService,
+						session,
+						orderRepository,
+						productRepository,
+						cartService,
+						payOffShoppingCart,
+						addressService
+					);
+				}
 			}
 			catch (Exception ex)
 			{
 				AnsiConsole.MarkupLine($"[red]Could not load products in demo: {ex.Message}[/]");
 			}
 			break;
+
 		case MenuOptions.ShowStatus:
 			var table = new Table()
 				.RoundedBorder()
@@ -187,6 +237,7 @@ while (!shouldExit)
 
 			AnsiConsole.Write(table);
 			break;
+
 		case MenuOptions.TestDatabaseConnection:
 			try
 			{
@@ -208,57 +259,6 @@ while (!shouldExit)
 			catch (Exception ex)
 			{
 				AnsiConsole.MarkupLine($"[red]Database connection failed: {ex.Message}[/]");
-			}
-			break;
-		case MenuOptions.InitializeDatabaseTables:
-			try
-			{
-				var initOption = AppMenuView.ShowInitializeMenu();
-
-				if (initOption == MenuOptions.InitializeNow)
-				{
-					var dbName = AnsiConsole.Ask<string>("Enter database name:");
-
-					AnsiConsole.Status().Start($"Initializing database '{dbName}'...", ctx =>
-					{
-						DBConnection.CreateDatabaseIfNotExists(dbName);
-
-						var dbConnection = new DBConnection(dbName);
-						using (var connection = dbConnection.GetConnection())
-						{
-							var repository = new DatabaseInitializerRepository();
-							repository.InitializeDatabase(connection);
-						}
-					});
-
-					AnsiConsole.MarkupLine($"[green]Database '{dbName}' and tables initialized successfully![/]");
-				}
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
-			}
-			break;
-		case MenuOptions.InsertTestData:
-			try
-			{
-				var dbName = AnsiConsole.Ask<string>("Enter database name (where tables exist):");
-
-				AnsiConsole.Status().Start($"Inserting test data into '{dbName}'...", ctx =>
-				{
-					var dbConnection = new DBConnection(dbName);
-					using (var connection = dbConnection.GetConnection())
-					{
-						var seeder = new TestDataSeederRepository();
-						seeder.SeedTestData(connection);
-					}
-				});
-
-				AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
 			}
 			break;
 

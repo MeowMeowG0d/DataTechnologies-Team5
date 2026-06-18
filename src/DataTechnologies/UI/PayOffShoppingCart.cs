@@ -3,6 +3,7 @@ using DataTechnologies.Services;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
+using DataTechnologies.Models;
 
 public class PayOffShoppingCart
 {
@@ -240,7 +241,22 @@ public class PayOffShoppingCart
                 TotalAmount = (float)totalAmount
             };
 
-            _orderRepository.Add(order);
+            int newOrderId = _orderRepository.Add(order);
+
+            var orderLines = new List<OrderLine>();
+            if (items != null)
+            {
+                foreach (var item in items)
+                {
+                    orderLines.Add(new OrderLine
+                    {
+                        ProductID = item.ProductId,
+                        Quantity = item.Quantity,
+                        UnitPrice = (float)item.Price
+                    });
+                }
+            }
+            _orderRepository.AddOrderLines(newOrderId, orderLines);
 
             // Re-mapping details directly out of our memory collection instead of another database roundtrip
             var emailProducts = new List<(string ProductName, int Quantity, decimal Price)>();
