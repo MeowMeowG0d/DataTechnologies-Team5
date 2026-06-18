@@ -234,6 +234,12 @@ namespace DataTechnologies.UI
                         PromptActions(true, totalAmount);
                         return;
                     }
+                        _payOffShoppingCart.DeliveryDetails(
+                        _userId,
+                        user.Name,
+                        user.Email,
+                        totalAmount
+                    );
                 }
             }
             if (action == ChangeCart)

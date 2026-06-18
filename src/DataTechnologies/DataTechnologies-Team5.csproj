@@ -14,6 +14,7 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <NoWarn>CA2007;CA1031;CA1024</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
