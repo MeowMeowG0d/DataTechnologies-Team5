@@ -30,7 +30,6 @@ public static class InputWhitelistValidator
 
     private static bool MatchesWhitelist(string? input, Regex whitelistRegex)
     {
-        // Default deny: reject null, empty, whitespace-only and any non-matching input.
         if (string.IsNullOrWhiteSpace(input))
             return false;
 
