@@ -1,4 +1,4 @@
-﻿using Spectre.Console;
+using Spectre.Console;
 using DotNetEnv;
 using DataTechnologies.Data;
 using DataTechnologies.Models;
@@ -87,9 +87,44 @@ while (!shouldExit)
 				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
 				var userService = new UserService(userRepo, new PasswordHasher());
 
-				var email = AnsiConsole.Ask<string>("Enter email:");
-				var name = AnsiConsole.Ask<string>("Enter name:");
-				var password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password:").Secret());
+				string email;
+				do
+				{
+					email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
+					if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+						AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+					else
+					{
+						AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+						break;
+					}
+				} while (true);
+
+				string name;
+				do
+				{
+					name = AnsiConsole.Ask<string>("Enter name:");
+					if (string.IsNullOrWhiteSpace(name))
+						AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
+					else
+					{
+						AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
+						break;
+					}
+				} while (true);
+
+				string password;
+				do
+				{
+					password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").Secret());
+					if (password.Length < 8)
+						AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+					else
+					{
+						AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+						break;
+					}
+				} while (true);
 
 				var user = new User { Email = email, Name = name, PasswordHash = password, EmailVerified = false };
 				var newUserId = userService.AddUser(user);

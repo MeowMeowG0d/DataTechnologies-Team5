@@ -8,9 +8,31 @@ public static class UserMenu
 {
     public static void HandleLogin(UserService userService, AppSession session)
     {
-        var email = AnsiConsole.Ask<string>("Enter email:");
-        var password = AnsiConsole.Prompt(
-            new TextPrompt<string>("Enter password:").PromptStyle("red").Secret());
+        string email;
+        do
+        {
+            email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                break;
+            }
+        } while (true);
+
+        string password;
+        do
+        {
+            password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").PromptStyle("red").Secret());
+            if (password.Length < 8)
+                AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                break;
+            }
+        } while (true);
 
         if (userService.Authenticate(email, password))
         {
@@ -26,7 +48,18 @@ public static class UserMenu
 
     public static void HandleForgotPassword(UserService userService)
     {
-        var email = AnsiConsole.Ask<string>("Enter your email to reset your password:");
+        string email;
+        do
+        {
+            email = AnsiConsole.Ask<string>("Enter your email to reset your password (e.g., name@domain.com):");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                break;
+            }
+        } while (true);
 
         if (userService.GetUserByEmail(email) == null)
         {
@@ -36,24 +69,31 @@ public static class UserMenu
 
         AnsiConsole.MarkupLine("[green]Account found. You can now set a new password.[/]");
 
-        var newPassword = AnsiConsole.Prompt(
-            new TextPrompt<string>("Enter new password (min. 8 characters):")
-                .PromptStyle("red")
-                .Secret()
-                .Validate(p => p.Length >= 8
-                    ? ValidationResult.Success()
-                    : ValidationResult.Error("[red]Password must be at least 8 characters long.[/]")));
-
-        var confirmPassword = AnsiConsole.Prompt(
-            new TextPrompt<string>("Confirm new password:")
-                .PromptStyle("red")
-                .Secret());
-
-        if (newPassword != confirmPassword)
+        string newPassword;
+        do
         {
-            AnsiConsole.MarkupLine("[red]Passwords do not match. Password was not reset.[/]");
-            return;
-        }
+            newPassword = AnsiConsole.Prompt(new TextPrompt<string>("Enter new password (min. 8 characters):").PromptStyle("red").Secret());
+            if (newPassword.Length < 8)
+                AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                break;
+            }
+        } while (true);
+
+        string confirmPassword;
+        do
+        {
+            confirmPassword = AnsiConsole.Prompt(new TextPrompt<string>("Confirm new password:").PromptStyle("red").Secret());
+            if (newPassword != confirmPassword)
+                AnsiConsole.MarkupLine("[red]Passwords do not match. Please try again.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Passwords match.[/]");
+                break;
+            }
+        } while (true);
 
         if (userService.ResetPassword(email, newPassword))
             AnsiConsole.MarkupLine("[green]Password reset successfully! You can now log in with your new password.[/]");
@@ -67,11 +107,44 @@ public static class UserMenu
 
         if (userOption == MenuOptions.RegisterUser)
         {
-            var email = AnsiConsole.Ask<string>("Enter email:");
-            var name = AnsiConsole.Ask<string>("Enter name:");
-            var password = AnsiConsole.Prompt(
-                new TextPrompt<string>("Enter password:")
-                    .Secret());
+            string email;
+            do
+            {
+                email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
+                if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                    AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                    break;
+                }
+            } while (true);
+
+            string name;
+            do
+            {
+                name = AnsiConsole.Ask<string>("Enter name:");
+                if (string.IsNullOrWhiteSpace(name))
+                    AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
+                    break;
+                }
+            } while (true);
+
+            string password;
+            do
+            {
+                password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").Secret());
+                if (password.Length < 8)
+                    AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                    break;
+                }
+            } while (true);
 
             var user = new User
             {
@@ -87,11 +160,31 @@ public static class UserMenu
         }
         else if (userOption == MenuOptions.Login)
         {
-            var email = AnsiConsole.Ask<string>("Enter email:");
-            var password = AnsiConsole.Prompt(
-                new TextPrompt<string>("Enter password:")
-                    .PromptStyle("red")
-                    .Secret());
+            string email;
+            do
+            {
+                email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
+                if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                    AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                    break;
+                }
+            } while (true);
+
+            string password;
+            do
+            {
+                password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").PromptStyle("red").Secret());
+                if (password.Length < 8)
+                    AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                    break;
+                }
+            } while (true);
 
             if (userService.Authenticate(email, password))
             {
@@ -118,13 +211,44 @@ public static class UserMenu
                 return;
             }
 
-            var email = AnsiConsole.Ask<string>($"Enter new email (current: {existingUser.Email}):", existingUser.Email);
-            var name = AnsiConsole.Ask<string>($"Enter new name (current: {existingUser.Name}):", existingUser.Name);
-            var password = AnsiConsole.Prompt(
-                new TextPrompt<string>("Enter new password (leave blank to keep current):")
-                    .Secret()
-                    .PromptStyle("red")
-                    .AllowEmpty());
+            string email;
+            do
+            {
+                email = AnsiConsole.Ask<string>($"Enter new email (current: {existingUser.Email}) (e.g., name@domain.com):", existingUser.Email);
+                if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                    AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                    break;
+                }
+            } while (true);
+
+            string name;
+            do
+            {
+                name = AnsiConsole.Ask<string>($"Enter new name (current: {existingUser.Name}):", existingUser.Name);
+                if (string.IsNullOrWhiteSpace(name))
+                    AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
+                    break;
+                }
+            } while (true);
+
+            string password;
+            do
+            {
+                password = AnsiConsole.Prompt(new TextPrompt<string>("Enter new password (min. 8 characters, leave blank to keep current):").Secret().PromptStyle("red").AllowEmpty());
+                if (!string.IsNullOrEmpty(password) && password.Length < 8)
+                    AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+                else
+                {
+                    AnsiConsole.MarkupLine(string.IsNullOrEmpty(password) ? "[green]✔ Keeping current password.[/]" : "[green]✔ New password criteria met.[/]");
+                    break;
+                }
+            } while (true);
 
             var updatedUser = new User
             {
