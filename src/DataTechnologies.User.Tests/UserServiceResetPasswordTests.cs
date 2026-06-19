@@ -65,8 +65,24 @@ namespace UserTests
         }
 
         [Theory]
+        [InlineData("invalid")]
+        [InlineData("user@")]
+        public void ResetPassword_WithInvalidEmailFormat_Throws(string email)
+        {
+            var mockRepo = new Mock<IUserRepository>();
+            var service = new UserService(mockRepo.Object, new PasswordHasher());
+
+            var ex = Assert.Throws<ArgumentException>(() => service.ResetPassword(email, "newSecret123"));
+            Assert.Contains("Email format is invalid", ex.Message);
+        }
+
+        [Theory]
         [InlineData("")]
         [InlineData("short")]
+        [InlineData("password123")]
+        [InlineData("PASSWORD123")]
+        [InlineData("Password")]
+        [InlineData("Password 123")]
         public void ResetPassword_WithInvalidPassword_Throws(string password)
         {
             var mockRepo = new Mock<IUserRepository>();

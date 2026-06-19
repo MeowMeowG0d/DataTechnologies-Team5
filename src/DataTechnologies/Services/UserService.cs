@@ -1,21 +1,54 @@
 using DataTechnologies.Repositories;
 using DataTechnologies.Models;
+using DataTechnologies.Utils;
 
 namespace DataTechnologies.Services;
 
 public class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher)
 {
+    private const string InvalidEmailError = "Email format is invalid.";
+    private const string InvalidNameError = "Name format is invalid.";
+    private const string PasswordSyntaxError = "Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter and one digit, without spaces.";
+
+    private static void ValidateEmail(string email)
+    {
+        if (!InputWhitelistValidator.IsValidEmail(email))
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                throw new ArgumentException("Email cannot be empty.");
+
+            throw new ArgumentException(InvalidEmailError);
+        }
+    }
+
+    private static void ValidateName(string name)
+    {
+        if (!InputWhitelistValidator.IsValidName(name))
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Name cannot be empty.");
+
+            throw new ArgumentException(InvalidNameError);
+        }
+    }
+
+    private static void ValidatePasswordSyntax(string password, string emptyPasswordMessage)
+    {
+        if (!InputWhitelistValidator.IsValidPassword(password))
+        {
+            if (string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException(emptyPasswordMessage);
+
+            throw new ArgumentException(PasswordSyntaxError);
+        }
+    }
+
     public int AddUser(User user)
     {
         ArgumentNullException.ThrowIfNull(user);
-        if (string.IsNullOrWhiteSpace(user.Email))
-            throw new ArgumentException("Email cannot be empty.");
-        if (string.IsNullOrWhiteSpace(user.PasswordHash))
-            throw new ArgumentException("Password hash cannot be empty.");
-        if (string.IsNullOrWhiteSpace(user.Name))
-            throw new ArgumentException("Name cannot be empty.");
-        if (user.PasswordHash.Length < 8)
-            throw new ArgumentException("Password must be at least 8 characters long.");
+        ValidateEmail(user.Email);
+        ValidateName(user.Name);
+        ValidatePasswordSyntax(user.PasswordHash, "Password hash cannot be empty.");
         
         User? existingUser = userRepository.GetByEmail(user.Email);
         if (existingUser != null)
@@ -38,10 +71,8 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
         ArgumentNullException.ThrowIfNull(user);
         if (user.UserId <= 0)
             throw new ArgumentException("Invalid user ID.");
-        if (string.IsNullOrWhiteSpace(user.Email))
-            throw new ArgumentException("Email cannot be empty.");
-        if (string.IsNullOrWhiteSpace(user.Name))
-            throw new ArgumentException("Name cannot be empty.");
+        ValidateEmail(user.Email);
+        ValidateName(user.Name);
 
         var existingUser = userRepository.GetById(user.UserId) 
             ?? throw new InvalidOperationException("User not found.");
@@ -51,18 +82,17 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
         if (string.IsNullOrWhiteSpace(user.PasswordHash))
             user.PasswordHash = existingUser.PasswordHash;
         else
+        {
+            ValidatePasswordSyntax(user.PasswordHash, "Password cannot be empty.");
             user.PasswordHash = passwordHasher.HashPassword(user.PasswordHash);
+        }
         return userRepository.Update(user);
     }
 
     public bool ResetPassword(string email, string newPassword)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email cannot be empty.");
-        if (string.IsNullOrWhiteSpace(newPassword))
-            throw new ArgumentException("Password cannot be empty.");
-        if (newPassword.Length < 8)
-            throw new ArgumentException("Password must be at least 8 characters long.");
+        ValidateEmail(email);
+        ValidatePasswordSyntax(newPassword, "Password cannot be empty.");
 
         var existingUser = userRepository.GetByEmail(email)
             ?? throw new InvalidOperationException("No user found with this email address.");
@@ -73,8 +103,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
     public bool Authenticate(string email, string password)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email cannot be empty.");
+        ValidateEmail(email);
         if (string.IsNullOrWhiteSpace(password))
             throw new ArgumentException("Password cannot be empty.");
 
@@ -92,8 +121,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
     public User? GetUserByEmail(string email)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email cannot be empty.");
+        ValidateEmail(email);
 
         return userRepository.GetByEmail(email);
     }

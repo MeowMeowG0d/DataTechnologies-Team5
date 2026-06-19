@@ -56,6 +56,8 @@ public class User : IComparable<User>, IEquatable<User>
                string.Equals(Email, other.Email, StringComparison.OrdinalIgnoreCase);
     }
 
+    public override string ToString() => $"ID: {UserId}, Email: {Email}, Name: {Name}, Email Verified: {EmailVerified}";
+
     public override bool Equals(object? obj)
         => obj is User user && Equals(user);
 

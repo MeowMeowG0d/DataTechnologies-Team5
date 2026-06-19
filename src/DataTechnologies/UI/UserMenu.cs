@@ -1,6 +1,7 @@
 using Spectre.Console;
 using DataTechnologies.Models;
 using DataTechnologies.Services;
+using DataTechnologies.Utils;
 using DataTechnologies.Repositories;
 using System.Globalization;
 
@@ -80,9 +81,9 @@ public static class UserMenu
             new TextPrompt<string>("Enter new password (min. 8 characters):")
                 .PromptStyle("red")
                 .Secret()
-                .Validate(p => p.Length >= 8
+                .Validate(p => InputWhitelistValidator.IsValidPassword(p)
                     ? ValidationResult.Success()
-                    : ValidationResult.Error("[red]Password must be at least 8 characters long.[/]")));
+                    : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
 
         var confirmPassword = AnsiConsole.Prompt(
             new TextPrompt<string>("Confirm new password:")

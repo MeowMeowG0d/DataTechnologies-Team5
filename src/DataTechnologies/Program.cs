@@ -33,6 +33,10 @@ async Task MainAsync()
     AppMenuView.RenderHeader();
     Env.Load();
 
+    var backupService = new BackupService(outputBasePath: "backups", retentionDays: 30);
+    using var backupScheduler = new BackupScheduler(backupService, intervalHours: 24);
+    backupScheduler.Start();
+
     if (!AnsiConsole.Profile.Capabilities.Interactive)
     {
         AnsiConsole.MarkupLine("[yellow]Non-interactive terminal detected. Running default status output.[/]");
@@ -206,9 +210,7 @@ async Task MainAsync()
                         var cartService = new ShoppingCartServiceRedis(redisConnection);
 
                         var userService = services.UserService;
-
                         var addressService = services.AddressService;
-
                         var orderRepo = services.OrderRepository;
 
                         var emailService = new EmailService(
@@ -371,8 +373,39 @@ async Task MainAsync()
                 }
                 break;
 
+            case MenuOptions.BackupDatabases:
+                try
+                {
+                    BackupResult backupResult = null!;
+                    await AnsiConsole.Status().StartAsync("Running backup for all databases...", async ctx =>
+                    {
+                        backupResult = await backupService.RunFullBackupAsync();
+                    });
+
+                    if (backupResult.Success)
+                    {
+                        AnsiConsole.MarkupLine($"[green]Backup completed successfully![/]");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"[yellow]Backup completed with errors:[/]");
+                        foreach (var error in backupResult.Errors)
+                            AnsiConsole.MarkupLine($"[red]  {Markup.Escape(error)}[/]");
+                    }
+
+                    AnsiConsole.MarkupLine($"[grey]Location: {Markup.Escape(Path.GetFullPath(backupResult.BackupPath))}[/]");
+                    foreach (var entry in backupResult.Log)
+                        AnsiConsole.MarkupLine($"[grey]  {Markup.Escape(entry)}[/]");
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Backup failed: {ex.Message}[/]");
+                }
+                break;
+
             default:
                 shouldExit = true;
+                backupScheduler.Stop();
                 AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");
                 break;
         }
