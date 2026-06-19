@@ -1,4 +1,5 @@
 using Npgsql;
+using DataTechnologies.Models;
 
 namespace DataTechnologies.Repositories
 {
@@ -21,12 +22,13 @@ namespace DataTechnologies.Repositories
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
             using var cmd = new NpgsqlCommand(sql, conn);
-
-            cmd.Parameters.AddWithValue("OrderNumber",   order.OrderNumber);
-            cmd.Parameters.AddWithValue("UserID",        order.UserID);
+            
+            ArgumentNullException.ThrowIfNull(order);
+            cmd.Parameters.AddWithValue("OrderNumber", order.OrderNumber);
+            cmd.Parameters.AddWithValue("UserID", order.UserID);
             cmd.Parameters.AddWithValue("PaymentMethod", order.PaymentMethod);
-            cmd.Parameters.AddWithValue("OrderStatus",   order.OrderStatus);
-            cmd.Parameters.AddWithValue("TotalAmount",   order.TotalAmount);
+            cmd.Parameters.AddWithValue("OrderStatus", order.OrderStatus);
+            cmd.Parameters.AddWithValue("TotalAmount", order.TotalAmount);
 
             return (int)cmd.ExecuteScalar()!;
         }
@@ -44,7 +46,7 @@ namespace DataTechnologies.Repositories
             return reader.Read() ? MapOrder(reader) : null;
         }
 
-        public List<Orders> GetByUserId(int userId)
+        public IReadOnlyCollection<Orders> GetByUserId(int userId)
         {
             const string sql = "SELECT * FROM Orders WHERE UserID = @UserID;";
             var orders = new List<Orders>();
@@ -73,7 +75,7 @@ namespace DataTechnologies.Repositories
             using var cmd = new NpgsqlCommand(sql, conn);
 
             cmd.Parameters.AddWithValue("OrderStatus", newStatus);
-            cmd.Parameters.AddWithValue("Id",          orderId);
+            cmd.Parameters.AddWithValue("Id", orderId);
 
             return cmd.ExecuteNonQuery() > 0;
         }
@@ -92,18 +94,64 @@ namespace DataTechnologies.Repositories
 
         private static Orders MapOrder(NpgsqlDataReader r) => new()
         {
-            OrderID       = r.GetInt32(r.GetOrdinal("orderid")),
-            OrderNumber   = ReadString(r, "ordernumber"),
-            UserID        = r.GetInt32(r.GetOrdinal("userid")),
+            OrderID = r.GetInt32(r.GetOrdinal("orderid")),
+            OrderNumber = ReadString(r, "ordernumber"),
+            UserID = r.GetInt32(r.GetOrdinal("userid")),
             PaymentMethod = ReadString(r, "paymentmethod"),
-            OrderStatus   = ReadString(r, "orderstatus"),
-            TotalAmount   = r.GetFloat(r.GetOrdinal("totalamount")),
+            OrderStatus = ReadString(r, "orderstatus"),
+            TotalAmount = r.GetFloat(r.GetOrdinal("totalamount")),
         };
 
         private static string ReadString(NpgsqlDataReader reader, string columnName)
         {
             var ordinal = reader.GetOrdinal(columnName);
             return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal);
+        }
+
+        public void AddOrderLines(int orderId, IEnumerable<OrderLine> lines)
+        {
+            
+            const string sql = @"
+        INSERT INTO OrderLines (OrderID, ProductID, Quantity, UnitPrice)
+        VALUES (@OrderID, @ProductID, @Quantity, @UnitPrice);";
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            ArgumentNullException.ThrowIfNull(lines);
+            foreach (var line in lines)
+            {
+                using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("OrderID", orderId);
+                cmd.Parameters.AddWithValue("ProductID", line.ProductID);
+                cmd.Parameters.AddWithValue("Quantity", line.Quantity);
+                cmd.Parameters.AddWithValue("UnitPrice", line.UnitPrice);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        public IReadOnlyCollection<OrderLine> GetOrderLines(int orderId)
+        {
+            const string sql = "SELECT * FROM OrderLines WHERE OrderID = @OrderID;";
+            var lines = new List<OrderLine>();
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("OrderID", orderId);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                lines.Add(new OrderLine
+                {
+                    OrderLineID = reader.GetInt32(reader.GetOrdinal("orderlineid")),
+                    OrderID = reader.GetInt32(reader.GetOrdinal("orderid")),
+                    ProductID = reader.GetInt32(reader.GetOrdinal("productid")),
+                    Quantity = reader.GetInt32(reader.GetOrdinal("quantity")),
+                    UnitPrice = reader.GetFloat(reader.GetOrdinal("unitprice"))
+                });
+
+            return lines;
         }
     }
 }

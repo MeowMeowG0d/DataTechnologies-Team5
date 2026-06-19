@@ -2,9 +2,9 @@ using System.Data;
 
 namespace DataTechnologies.Repositories
 {
-    public class DatabaseInitializerRepository
+    public static class DatabaseInitializerRepository
     {
-        public void InitializeDatabase(IDbConnection connection)
+        public static void InitializeDatabase(IDbConnection connection)
         {
             
             var createTablesSql = @"

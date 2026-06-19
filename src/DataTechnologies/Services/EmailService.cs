@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Mail;
 using System.Text;
+
+namespace DataTechnologies.Services;  // CA1050: declare types in namespaces
 
 public class EmailService
 {
@@ -22,18 +25,21 @@ public class EmailService
         string customerName,
         string orderNumber,
         string addressLine,
-        List<(string ProductName, int Quantity, decimal Price)> products,
+        IReadOnlyCollection<(string ProductName, int Quantity, decimal Price)> products,
         decimal subtotaal,
         decimal btw,
         decimal verzendkosten,
         decimal totaal)
     {
+        ArgumentNullException.ThrowIfNull(products);
+        var culture = CultureInfo.InvariantCulture;
+
         var body = new StringBuilder();
-        body.AppendLine($"Beste {customerName},");
+        body.AppendLine(culture, $"Beste {customerName},");
         body.AppendLine();
         body.AppendLine("Bedankt voor je bestelling! Hieronder vind je een overzicht.");
         body.AppendLine();
-        body.AppendLine($"Ordernummer: {orderNumber}");
+        body.AppendLine(culture, $"Ordernummer: {orderNumber}");
         body.AppendLine();
         body.AppendLine("───────────────────────────────────");
         body.AppendLine("Bezorgadres:");
@@ -42,23 +48,23 @@ public class EmailService
         body.AppendLine("───────────────────────────────────");
         body.AppendLine("Bestelde producten:");
         body.AppendLine();
-        body.AppendLine($"{"Product",-30} {"Aantal",6} {"Prijs",12} {"Subtotaal",12}");
+        body.AppendLine(culture, $"{"Product",-30} {"Aantal",6} {"Prijs",12} {"Subtotaal",12}");
         body.AppendLine(new string('-', 62));
 
         foreach (var (productName, quantity, price) in products)
         {
             decimal rowTotal = quantity * price;
-            body.AppendLine($"{productName,-30} {quantity,6} {$"EUR {price:0.00}",12} {$"EUR {rowTotal:0.00}",12}");
+            body.AppendLine(culture, $"{productName,-30} {quantity,6} {$"EUR {price:0.00}",12} {$"EUR {rowTotal:0.00}",12}");
         }
 
         body.AppendLine();
-        body.AppendLine($"Subtotaal (excl. BTW): EUR {subtotaal:0.00}");
-        body.AppendLine($"BTW (21%):             EUR {btw:0.00}");
-        body.AppendLine($"Verzendkosten:         EUR {verzendkosten:0.00}");
-        body.AppendLine($"Totaalprijs:           EUR {totaal:0.00}");
+        body.AppendLine(culture, $"Subtotaal (excl. BTW): EUR {subtotaal:0.00}");
+        body.AppendLine(culture, $"BTW (21%):             EUR {btw:0.00}");
+        body.AppendLine(culture, $"Verzendkosten:         EUR {verzendkosten:0.00}");
+        body.AppendLine(culture, $"Totaalprijs:           EUR {totaal:0.00}");
         body.AppendLine();
         body.AppendLine("───────────────────────────────────");
-        body.AppendLine($"Verwachte levertijd: {DateTime.Now.AddDays(3):dddd d MMMM yyyy}");
+        body.AppendLine(culture, $"Verwachte levertijd: {DateTime.Now.AddDays(3):dddd d MMMM yyyy}");
         body.AppendLine();
         body.AppendLine("Bekijk je bestelstatus:");
         body.AppendLine($"https://unlucky.com");
@@ -66,7 +72,7 @@ public class EmailService
         body.AppendLine("Met vriendelijke groet,");
         body.AppendLine("DataTechnologies Team 5");
 
-        var message = new MailMessage
+        using var message = new MailMessage
         {
             From = new MailAddress(_fromEmail, "DataTechnologies"),
             Subject = $"Bevestiging bestelling {orderNumber}",
