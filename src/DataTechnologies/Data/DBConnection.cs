@@ -20,6 +20,8 @@ namespace DataTechnologies.Data
             _connectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database};";
         }
 
+        public string ConnectionString => _connectionString;
+
         public IDbConnection GetConnection()
         {
             return new NpgsqlConnection(_connectionString);

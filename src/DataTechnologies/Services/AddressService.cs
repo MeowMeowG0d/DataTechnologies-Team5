@@ -9,9 +9,9 @@ public class AddressService
 {
     private readonly AddressRepository _addressRepository;
 
-    public AddressService(DBConnection dbConnection)
+    public AddressService(DBConnection dbConnection, IFieldCipher cipher)
     {
-        _addressRepository = new AddressRepository(dbConnection);
+        _addressRepository = new AddressRepository(dbConnection, cipher);
     }
 
     public int SaveAddress(int userId, string street, string number, string postcode, string city, string country, string? type)
