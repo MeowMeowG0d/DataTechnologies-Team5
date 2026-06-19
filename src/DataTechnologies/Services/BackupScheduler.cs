@@ -1,6 +1,6 @@
 namespace DataTechnologies.Services
 {
-    public class BackupScheduler
+    public class BackupScheduler : IDisposable
     {
         private readonly BackupService _backupService;
         private readonly TimeSpan _interval;
@@ -20,6 +20,18 @@ namespace DataTechnologies.Services
 
         public void Stop() => _cts?.Cancel();
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+                _cts?.Dispose();
+        }
+
         private async Task RunAsync(CancellationToken ct)
         {
             using var timer = new PeriodicTimer(_interval);
@@ -31,7 +43,8 @@ namespace DataTechnologies.Services
                     var status = result.Success ? "OK" : $"ERRORS: {string.Join(", ", result.Errors)}";
                     await File.AppendAllTextAsync(
                         Path.Combine(_backupService.OutputBasePath, "backup.log"),
-                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Scheduled backup {status}{Environment.NewLine}");
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Scheduled backup {status}{Environment.NewLine}",
+                        CancellationToken.None);
                 }
                 catch (OperationCanceledException)
                 {
@@ -41,7 +54,8 @@ namespace DataTechnologies.Services
                 {
                     await File.AppendAllTextAsync(
                         Path.Combine(_backupService.OutputBasePath, "backup.log"),
-                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Scheduled backup FAILED: {ex.Message}{Environment.NewLine}");
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Scheduled backup FAILED: {ex.Message}{Environment.NewLine}",
+                        CancellationToken.None);
                 }
             }
         }

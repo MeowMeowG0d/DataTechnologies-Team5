@@ -3,6 +3,8 @@ using DataTechnologies.Services;
 using Spectre.Console;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
+using System.Linq;
 
 namespace DataTechnologies.UI
 {
@@ -32,7 +34,6 @@ namespace DataTechnologies.UI
             AnsiConsole.Write(new Spectre.Console.Rule("[yellow]Je Winkelwagen[/]"));
             AnsiConsole.WriteLine();
 
-            // Directly fetch items from Redis via User ID (Cart ID concept is gone)
             var items = _shoppingCartService.GetAllProductsFromCart(_userId);
 
             if (items == null || items.Count == 0)
@@ -55,11 +56,10 @@ namespace DataTechnologies.UI
                 if (item.Quantity <= 0) continue;
 
                 decimal rowSubtotal = item.Quantity * item.Price;
-
                 table.AddRow(
-                    item.ProductId.ToString(),
+                    item.ProductId.ToString(CultureInfo.InvariantCulture),
                     item.ProductName,
-                    item.Quantity.ToString(),
+                    item.Quantity.ToString(CultureInfo.InvariantCulture),
                     $"EUR {item.Price:0.00}",
                     $"EUR {rowSubtotal:0.00}");
             }
@@ -90,18 +90,20 @@ namespace DataTechnologies.UI
 
         public void ChangeCartScreen()
         {
-            var items = _shoppingCartService.GetAllProductsFromCart(_userId);
-                
-                if (items == null || items.Count == 0)
-                {
-                    AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
-                    System.Threading.Thread.Sleep(1500); 
-                    return;
-                }
+            var items = _shoppingCartService
+                .GetAllProductsFromCart(_userId)
+                .ToList();
 
-                int selectedIndex = 0;
-                bool editingCart = true;
-            
+            if (items == null || items.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[grey]Je winkelwagen is momenteel leeg.[/]");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            int selectedIndex = 0;
+            bool editingCart = true;
+
             while (editingCart)
             {
                 if (selectedIndex >= items.Count) selectedIndex = items.Count - 1;
@@ -164,7 +166,6 @@ namespace DataTechnologies.UI
                 switch (key)
                 {
                     case ConsoleKey.Escape:
-                        // Save all changes when ESC is pressed
                         foreach (var item in items)
                         {
                             _shoppingCartService.UpdateCartItemQuantity(item.ProductId, _userId, item.Quantity);
@@ -217,7 +218,7 @@ namespace DataTechnologies.UI
                     return;
                 }
 
-                if (_payOffShoppingCart.CheckAccountExistanc(_userId) == false)
+                if (PayOffShoppingCart.CheckAccountExistanc(_userId) == false)
                 {
                     AnsiConsole.MarkupLine("[red]Je moet ingelogd zijn om af te rekenen.[/]"); //later als we alles connecten fuinction aanroepen dat inloggen is
                     PromptActions(true, totalAmount);
@@ -226,7 +227,19 @@ namespace DataTechnologies.UI
                 else
                 {
                     var user = _userService.GetUserById(_userId);
-                    _payOffShoppingCart.DeliveryDetails(_userId, user.Name, user.Email, totalAmount);
+
+                    if (user == null)
+                    {
+                        AnsiConsole.MarkupLine("[red]User niet gevonden. Log opnieuw in.[/]");
+                        PromptActions(true, totalAmount);
+                        return;
+                    }
+                        _payOffShoppingCart.DeliveryDetails(
+                        _userId,
+                        user.Name,
+                        user.Email,
+                        totalAmount
+                    );
                 }
             }
             if (action == ChangeCart)

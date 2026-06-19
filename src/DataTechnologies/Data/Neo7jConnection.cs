@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Neo4j.Driver;
 
+namespace DataTechnologies.Repositories;
+
 public class Neo4jRepository
 {
     private readonly IDriver _driver;

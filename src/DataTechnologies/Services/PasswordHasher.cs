@@ -19,6 +19,9 @@ public class PasswordHasher : IPasswordHasher
 
     public bool VerifyPassword(string password, string hashedPassword)
     {
+        ArgumentNullException.ThrowIfNull(hashedPassword);
+        ArgumentNullException.ThrowIfNull(password);
+
         var parts = hashedPassword.Split('.', 3);
         if (parts.Length != 3)
             return false;
@@ -31,12 +34,21 @@ public class PasswordHasher : IPasswordHasher
             var salt = Convert.FromBase64String(parts[1]);
             var expectedHash = Convert.FromBase64String(parts[2]);
 
-            using var deriveBytes = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
+            using var deriveBytes = new Rfc2898DeriveBytes(
+                password,
+                salt,
+                iterations,
+                HashAlgorithmName.SHA256);
+
             var actualHash = deriveBytes.GetBytes(HashSize);
 
             return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
         }
-        catch
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (CryptographicException)
         {
             return false;
         }

@@ -32,8 +32,11 @@ namespace DataTechnologies.UI
         public const string Logout = "Logout";
         public const string ForgotPassword = "Forgot password";
 
+        // Methods are kept for menu lists that depend on session state (a parameter is required).
         public static IReadOnlyList<string> GetMainMenuOptions(AppSession session)
         {
+            ArgumentNullException.ThrowIfNull(session);
+
             if (!session.IsLoggedIn)
                 return new[] { Login, RegisterUser, ForgotPassword, InitializeDatabaseTables, InsertTestData, BackupDatabases, Exit };
 
@@ -50,47 +53,43 @@ namespace DataTechnologies.UI
             };
         }
 
-        public static IReadOnlyList<string> GetDemoMenuOptions()
-        {
-            return new[]
-            {
-                ShowAvailableProducts,
-                Account,
-                Back
-            };
-        }
-
         public static IReadOnlyList<string> GetAccountMenuOptions(AppSession session)
         {
+            ArgumentNullException.ThrowIfNull(session);
+
             if (!session.IsLoggedIn)
                 return new[] { Login, RegisterUser, ForgotPassword, Back };
 
             return new[] { MyOrders, UpdateUser, DeleteUser, ShowAllUsers, Logout, Back };
         }
 
-        public static IReadOnlyList<string> GetAdminMenuOptions()
+        public static IReadOnlyList<string> DemoMenuOptions { get; } = new[]
         {
-            return new[] { ShowAllUsers, EditUser, DeleteUser, Back };
-        }
+            ShowAvailableProducts,
+            Account,
+            Back
+        };
 
-        public static IReadOnlyList<string> GetInitializeMenuOptions()
+        public static IReadOnlyList<string> AdminMenuOptions { get; } = new[]
         {
-            return new[]
-            {
-                InitializeNow,
-                Back
-            };
-        }
+            ShowAllUsers,
+            EditUser,
+            DeleteUser,
+            Back
+        };
 
-        public static IReadOnlyList<string> GetTestDatabaseMenuOptions()
+        public static IReadOnlyList<string> InitializeMenuOptions { get; } = new[]
         {
-            return new[]
-            {
-                PostgreSqlDatabase,
-                MongoDbDatabase,
-                Back
-            };
-        }
+            InitializeNow,
+            Back
+        };
+
+        public static IReadOnlyList<string> TestDatabaseMenuOptions { get; } = new[]
+        {
+            PostgreSqlDatabase,
+            MongoDbDatabase,
+            Back
+        };
     }
 
     public static class AppMenuView
@@ -110,19 +109,19 @@ namespace DataTechnologies.UI
             AnsiConsole.Prompt(CreateSelectionPrompt("Choose an action", MenuOptions.GetMainMenuOptions(session)));
 
         public static string ShowDemoMenu() =>
-            AnsiConsole.Prompt(CreateSelectionPrompt("Demo options", MenuOptions.GetDemoMenuOptions()));
+            AnsiConsole.Prompt(CreateSelectionPrompt("Demo options", MenuOptions.DemoMenuOptions));
 
         public static string ShowAccountMenu(AppSession session) =>
             AnsiConsole.Prompt(CreateSelectionPrompt("Account options", MenuOptions.GetAccountMenuOptions(session)));
 
         public static string ShowAdminMenu() =>
-            AnsiConsole.Prompt(CreateSelectionPrompt("Admin panel", MenuOptions.GetAdminMenuOptions()));
+            AnsiConsole.Prompt(CreateSelectionPrompt("Admin panel", MenuOptions.AdminMenuOptions));
 
         public static string ShowInitializeMenu() =>
-            AnsiConsole.Prompt(CreateSelectionPrompt("Initialize options", MenuOptions.GetInitializeMenuOptions()));
+            AnsiConsole.Prompt(CreateSelectionPrompt("Initialize options", MenuOptions.InitializeMenuOptions));
 
         public static string ShowTestDatabaseMenu() =>
-            AnsiConsole.Prompt(CreateSelectionPrompt("Test database options", MenuOptions.GetTestDatabaseMenuOptions()));
+            AnsiConsole.Prompt(CreateSelectionPrompt("Test database options", MenuOptions.TestDatabaseMenuOptions));
 
         private static SelectionPrompt<string> CreateSelectionPrompt(string title, IEnumerable<string> options)
         {

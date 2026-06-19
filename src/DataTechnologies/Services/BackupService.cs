@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -11,8 +12,8 @@ namespace DataTechnologies.Services
     {
         public bool Success => Errors.Count == 0;
         public string BackupPath { get; init; } = "";
-        public List<string> Errors { get; init; } = new();
-        public List<string> Log { get; init; } = new();
+        public IReadOnlyList<string> Errors { get; init; } = new List<string>();
+        public IReadOnlyList<string> Log { get; init; } = new List<string>();
     }
 
     public class BackupService
@@ -22,8 +23,10 @@ namespace DataTechnologies.Services
         private const string RedisConnectionString =
             "145.24.237.123:8379,password=pRnj7a4Gh,user=team5";
 
-        public readonly string OutputBasePath;
-        public readonly int RetentionDays;
+        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+        public string OutputBasePath { get; }
+        public int RetentionDays { get; }
 
         public BackupService(string outputBasePath = "backups", int retentionDays = 30)
         {
@@ -33,7 +36,7 @@ namespace DataTechnologies.Services
 
         public async Task<BackupResult> RunFullBackupAsync()
         {
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture);
             var backupDir = Path.Combine(OutputBasePath, $"backup_{timestamp}");
             Directory.CreateDirectory(backupDir);
 
@@ -52,7 +55,7 @@ namespace DataTechnologies.Services
             return new BackupResult { BackupPath = backupDir, Errors = errors, Log = log };
         }
 
-        private async Task BackupPostgreSQLAsync(string dir, List<string> errors, List<string> log)
+        private static async Task BackupPostgreSQLAsync(string dir, List<string> errors, List<string> log)
         {
             try
             {
@@ -70,19 +73,21 @@ namespace DataTechnologies.Services
                 foreach (var table in tables)
                 {
                     var rows = new List<Dictionary<string, object?>>();
+#pragma warning disable CA2100
                     await using var cmd = new NpgsqlCommand($"SELECT * FROM \"{table}\"", connection);
+#pragma warning restore CA2100
                     await using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
                     {
                         var row = new Dictionary<string, object?>();
                         for (int i = 0; i < reader.FieldCount; i++)
-                            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : ConvertForJson(reader.GetValue(i));
+                            row[reader.GetName(i)] = await reader.IsDBNullAsync(i) ? null : ConvertForJson(reader.GetValue(i));
                         rows.Add(row);
                     }
                     allData[table] = rows;
                 }
 
-                var json = JsonSerializer.Serialize(allData, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(allData, JsonOptions);
                 await File.WriteAllTextAsync(Path.Combine(dir, "postgresql.json"), json);
                 log.Add($"PostgreSQL: {tables.Count} tables backed up");
             }
@@ -92,7 +97,7 @@ namespace DataTechnologies.Services
             }
         }
 
-        private async Task BackupMongoDBAsync(string dir, List<string> errors, List<string> log)
+        private static async Task BackupMongoDBAsync(string dir, List<string> errors, List<string> log)
         {
             try
             {
@@ -122,7 +127,7 @@ namespace DataTechnologies.Services
             }
         }
 
-        private async Task BackupRedisAsync(string dir, List<string> errors, List<string> log)
+        private static async Task BackupRedisAsync(string dir, List<string> errors, List<string> log)
         {
             try
             {
@@ -131,7 +136,7 @@ namespace DataTechnologies.Services
                 var server = redis.GetServer(redis.GetEndPoints()[0]);
 
                 var allData = new Dictionary<string, object?>();
-                foreach (var key in server.Keys(database: db.Database))
+                await foreach (var key in server.KeysAsync(database: db.Database))
                 {
                     var type = await db.KeyTypeAsync(key);
                     allData[key.ToString()] = type switch
@@ -150,7 +155,7 @@ namespace DataTechnologies.Services
                     };
                 }
 
-                var json = JsonSerializer.Serialize(allData, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(allData, JsonOptions);
                 await File.WriteAllTextAsync(Path.Combine(dir, "redis.json"), json);
                 log.Add($"Redis: {allData.Count} keys backed up");
             }
@@ -160,7 +165,7 @@ namespace DataTechnologies.Services
             }
         }
 
-        private async Task BackupNeo4jAsync(string dir, List<string> errors, List<string> log)
+        private static async Task BackupNeo4jAsync(string dir, List<string> errors, List<string> log)
         {
             try
             {
@@ -170,7 +175,7 @@ namespace DataTechnologies.Services
                 var neo4jPassword = Environment.GetEnvironmentVariable("NEO4J_PASSWORD")
                     ?? throw new InvalidOperationException("NEO4J_PASSWORD not set");
 
-                await using var driver = GraphDatabase.Driver(neo4jUri, AuthTokens.Basic(neo4jUser, neo4jPassword));
+                await using var driver = GraphDatabase.Driver(new Uri(neo4jUri), AuthTokens.Basic(neo4jUser, neo4jPassword));
                 await driver.VerifyConnectivityAsync();
                 await using var session = driver.AsyncSession();
 
@@ -202,7 +207,7 @@ namespace DataTechnologies.Services
                 });
 
                 var allData = new { nodes, relationships };
-                var json = JsonSerializer.Serialize(allData, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(allData, JsonOptions);
                 await File.WriteAllTextAsync(Path.Combine(dir, "neo4j.json"), json);
                 log.Add($"Neo4j: {nodes.Count} nodes, {relationships.Count} relationships backed up");
             }
@@ -233,7 +238,7 @@ namespace DataTechnologies.Services
         private async Task AppendToLogFileAsync(string backupDir, List<string> log, List<string> errors)
         {
             var logPath = Path.Combine(OutputBasePath, "backup.log");
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
             var lines = new List<string> { $"[{timestamp}] Backup: {backupDir}" };
             lines.AddRange(log.Select(l => $"  {l}"));
             lines.AddRange(errors.Select(e => $"  ERROR: {e}"));
@@ -252,8 +257,8 @@ namespace DataTechnologies.Services
             float f => f,
             decimal d => (double)d,
             bool b => b,
-            DateTime dt => dt.ToString("O"),
-            DateTimeOffset dto => dto.ToString("O"),
+            DateTime dt => dt.ToString("O", CultureInfo.InvariantCulture),
+            DateTimeOffset dto => dto.ToString("O", CultureInfo.InvariantCulture),
             Guid g => g.ToString(),
             byte[] bytes => Convert.ToBase64String(bytes),
             System.Collections.IEnumerable list => list.Cast<object?>().Select(ConvertForJson).ToList(),

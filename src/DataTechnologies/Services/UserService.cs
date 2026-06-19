@@ -45,6 +45,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
     public int AddUser(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         ValidateEmail(user.Email);
         ValidateName(user.Name);
         ValidatePasswordSyntax(user.PasswordHash, "Password hash cannot be empty.");
@@ -67,6 +68,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
     public bool UpdateUser(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         if (user.UserId <= 0)
             throw new ArgumentException("Invalid user ID.");
         ValidateEmail(user.Email);
@@ -123,12 +125,12 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
         return userRepository.GetByEmail(email);
     }
-    public List<User> GetAllUsers()
+    public IReadOnlyCollection<User> GetAllUsers()
     {
         return userRepository.GetAll();
     }
 
-    public List<Orders> GetPreviousOrders(int userId)
+    public IReadOnlyCollection<Orders> GetPreviousOrders(int userId)
     {
         if (userId <= 0)
             throw new ArgumentException("Invalid user ID.");
