@@ -2,19 +2,20 @@ using System.Data;
 
 namespace DataTechnologies.Repositories
 {
-    public class DatabaseInitializerRepository
+    public static class DatabaseInitializerRepository
     {
-        public void InitializeDatabase(IDbConnection connection)
+        public static void InitializeDatabase(IDbConnection connection)
         {
             
             var createTablesSql = @"
                 -- 1. Users table (No foreign keys)
                 CREATE TABLE IF NOT EXISTS Users (
                     UserId SERIAL PRIMARY KEY,
-                    Email VARCHAR(255) NOT NULL,
+                    Email TEXT NOT NULL,
                     PasswordHash VARCHAR(255) NOT NULL,
-                    Name VARCHAR(255),
-                    EmailVerified BOOLEAN NOT NULL DEFAULT FALSE
+                    Name TEXT,
+                    EmailVerified BOOLEAN NOT NULL DEFAULT FALSE,
+                    EmailIndex VARCHAR(64)
                 );
 
                 -- 2. Product table (No foreign keys)
@@ -55,12 +56,12 @@ namespace DataTechnologies.Repositories
                 CREATE TABLE IF NOT EXISTS Addresses (
                     AddresID SERIAL PRIMARY KEY,
                     UserID INT NOT NULL,
-                    Street VARCHAR(255),
-                    Number VARCHAR(50),
-                    Postcode VARCHAR(50),
-                    city VARCHAR(100),
-                    Country VARCHAR(100),
-                    Type VARCHAR(50),
+                    Street TEXT,
+                    Number TEXT,
+                    Postcode TEXT,
+                    city TEXT,
+                    Country TEXT,
+                    Type TEXT,
                     FOREIGN KEY (UserID) REFERENCES Users(UserId) ON DELETE CASCADE
                 );
 
@@ -80,7 +81,7 @@ namespace DataTechnologies.Repositories
                     OrderID SERIAL PRIMARY KEY,
                     OrderNumber VARCHAR(100) NOT NULL,
                     UserID INT NOT NULL,
-                    PaymentMethod VARCHAR(100),
+                    PaymentMethod TEXT,
                     OrderStatus VARCHAR(100),
                     TotalAmount REAL NOT NULL,
                     FOREIGN KEY (UserID) REFERENCES Users(UserId) ON DELETE CASCADE
@@ -126,6 +127,29 @@ namespace DataTechnologies.Repositories
                     FOREIGN KEY (ProductID) REFERENCES Product(ProductID) ON DELETE CASCADE,
                     FOREIGN KEY (UserID) REFERENCES Users(UserId) ON DELETE CASCADE
                 );
+
+                -- 13. PaymentCards table (encrypted card data, one row per credit-card order)
+                CREATE TABLE IF NOT EXISTS PaymentCards (
+                    CardID SERIAL PRIMARY KEY,
+                    OrderID INT NOT NULL,
+                    CardHolder TEXT NOT NULL,
+                    CardNumber TEXT NOT NULL,
+                    Expiry TEXT NOT NULL,
+                    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID) ON DELETE CASCADE
+                );
+
+                -- Upgrade pre-existing databases in place (no-op on a fresh install).
+                ALTER TABLE Users ALTER COLUMN Email TYPE TEXT;
+                ALTER TABLE Users ALTER COLUMN Name TYPE TEXT;
+                ALTER TABLE Users ADD COLUMN IF NOT EXISTS EmailIndex VARCHAR(64);
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_users_emailindex ON Users (EmailIndex);
+                ALTER TABLE Addresses ALTER COLUMN Street TYPE TEXT;
+                ALTER TABLE Addresses ALTER COLUMN Number TYPE TEXT;
+                ALTER TABLE Addresses ALTER COLUMN Postcode TYPE TEXT;
+                ALTER TABLE Addresses ALTER COLUMN city TYPE TEXT;
+                ALTER TABLE Addresses ALTER COLUMN Country TYPE TEXT;
+                ALTER TABLE Addresses ALTER COLUMN Type TYPE TEXT;
+                ALTER TABLE Orders ALTER COLUMN PaymentMethod TYPE TEXT;
             ";
 
             var seedProductsSql = @"

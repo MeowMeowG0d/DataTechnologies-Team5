@@ -21,6 +21,8 @@ namespace DataTechnologies.Data
             _connectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database};";
         }
 
+        public string ConnectionString => _connectionString;
+
         public IDbConnection GetConnection()
         {
             return new NpgsqlConnection(_connectionString);
@@ -82,7 +84,7 @@ namespace DataTechnologies.Data
             if (string.IsNullOrWhiteSpace(uri) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
                 throw new InvalidOperationException("NEO4J_URI, NEO4J_USER or NEO4J_PASSWORD was not found. Ensure .env is present or set the environment variables.");
 
-            await using var driver = GraphDatabase.Driver(uri, AuthTokens.Basic(user, password));
+            await using var driver = GraphDatabase.Driver(new Uri(uri), AuthTokens.Basic(user, password));
             await driver.VerifyConnectivityAsync();
         }
     }

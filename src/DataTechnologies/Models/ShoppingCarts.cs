@@ -1,3 +1,4 @@
+namespace DataTechnologies.Models;
 public class ShoppingCarts
 {
     public int CartID { get; set; }

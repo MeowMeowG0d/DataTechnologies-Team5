@@ -1,21 +1,25 @@
+using System;
+using System.Globalization;
 using DataTechnologies.Services;
+using DataTechnologies.Models;
 using Spectre.Console;
 
+namespace DataTechnologies.UI;
 public class OrderConfirmationScreen
 {
-    private readonly ShoppingCartService _shoppingCartService;
+    private readonly ShoppingCartServiceRedis _shoppingCartService;
 
-    public OrderConfirmationScreen(ShoppingCartService shoppingCartService)
+    public OrderConfirmationScreen(ShoppingCartServiceRedis shoppingCartService)
     {
         _shoppingCartService = shoppingCartService;
     }
 
     public void Show(string orderNumber, string name, string emailAddress, Addresses address, string paymentMethod, int userId)
     {
+        ArgumentNullException.ThrowIfNull(address);
+
         AnsiConsole.Clear();
-        AnsiConsole.MarkupLine("[green]═══════════════════════════════════[/]");
-        AnsiConsole.MarkupLine("[green]        BEVESTIGING BESTELLING      [/]");
-        AnsiConsole.MarkupLine("[green]═══════════════════════════════════[/]");
+        AnsiConsole.Write(new Spectre.Console.Rule("[green]BEVESTIGING BESTELLING[/]"));
         AnsiConsole.WriteLine();
 
         AnsiConsole.MarkupLine($"[bold green]Bedankt voor je bestelling, {name}![/]");
@@ -27,7 +31,7 @@ public class OrderConfirmationScreen
         AnsiConsole.MarkupLine("[green]───────────────────────────────────[/]");
         AnsiConsole.MarkupLine("[grey]Leveringsadres:[/]");
         AnsiConsole.MarkupLine($"  {address.Street} {address.Number}");
-        AnsiConsole.MarkupLine($"  {address.Postcode.ToUpper()}  {address.city}");
+        AnsiConsole.MarkupLine($"  {address.Postcode.ToUpper(CultureInfo.InvariantCulture)}  {address.city}");
         AnsiConsole.MarkupLine($"  {address.Country}");
         AnsiConsole.MarkupLine($"  {address.Type}");
 
@@ -40,38 +44,31 @@ public class OrderConfirmationScreen
         AnsiConsole.MarkupLine("[grey]Bestelde producten:[/]");
         AnsiConsole.WriteLine();
 
-        int? cartId = _shoppingCartService.GetCartIdByUserId(userId);
-        if (cartId != null)
+        var items = _shoppingCartService.GetAllProductsFromCart(userId);
+
+        if (items != null && items.Count > 0)
         {
-            var itemsReader = _shoppingCartService.GetAllProductsFromCart(cartId.Value);
-            if (itemsReader != null)
+            var productTable = new Table()
+                .RoundedBorder()
+                .AddColumn("Product")
+                .AddColumn("Aantal")
+                .AddColumn("Prijs per stuk")
+                .AddColumn("Subtotaal");
+
+            foreach (var item in items)
             {
-                var productTable = new Table()
-                    .RoundedBorder()
-                    .AddColumn("Product")
-                    .AddColumn("Aantal")
-                    .AddColumn("Prijs per stuk")
-                    .AddColumn("Subtotaal");
+                decimal rowSubtotal = item.Quantity * item.Price;
 
-                while (itemsReader.Read())
-                {
-                    string productName = itemsReader["name"].ToString() ?? "";
-                    int quantity = Convert.ToInt32(itemsReader["quantity"]);
-                    decimal price = Convert.ToDecimal(itemsReader["price"]);
-                    decimal rowSubtotal = quantity * price;
-
-                    productTable.AddRow(
-                        productName,
-                        quantity.ToString(),
-                        $"EUR {price:0.00}",
-                        $"EUR {rowSubtotal:0.00}");
-                }
-                itemsReader.Dispose();
-
-                AnsiConsole.Write(productTable);
+                productTable.AddRow(
+                    item.ProductName,
+                    item.Quantity.ToString(CultureInfo.InvariantCulture),
+                    $"EUR {item.Price:0.00}",
+                    $"EUR {rowSubtotal:0.00}");
             }
 
-            decimal subtotaal = _shoppingCartService.CalculateSubTotalPrice(cartId.Value);
+            AnsiConsole.Write(productTable);
+
+            decimal subtotaal = _shoppingCartService.CalculateSubTotalPrice(userId);
             decimal btw = subtotaal * 0.21m;
             decimal verzendkosten = 2.00m;
             decimal totaal = subtotaal + btw + verzendkosten;
@@ -90,11 +87,15 @@ public class OrderConfirmationScreen
 
             AnsiConsole.Write(summaryTable);
         }
+        else
+        {
+            AnsiConsole.MarkupLine("[grey]Geen productgegevens beschikbaar.[/]");
+        }
 
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[green]───────────────────────────────────[/]");
         DateTime verwachteLevertijd = DateTime.Now.AddDays(3);
-        AnsiConsole.MarkupLine($"[grey]Verwachte levertijd:[/] [bold]{verwachteLevertijd:dddd d MMMM yyyy}[/]");
+        AnsiConsole.MarkupLine($"[grey]Verwachte levertijd:[/] [bold]{verwachteLevertijd.ToString("dddd d MMMM yyyy", CultureInfo.CurrentCulture)}[/]");
 
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[green]═══════════════════════════════════[/]");

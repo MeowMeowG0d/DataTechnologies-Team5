@@ -20,9 +20,15 @@ namespace DataTechnologies.Repositories
 
         public ProductRepository(string? sqlConnectionString)
         {
-            _sqlConnectionString = string.IsNullOrWhiteSpace(sqlConnectionString)
-                ? new DBConnection().GetConnection().ConnectionString
-                : sqlConnectionString;
+            if (string.IsNullOrWhiteSpace(sqlConnectionString))
+            {
+                using var dbConnection = new DBConnection().GetConnection();
+                _sqlConnectionString = dbConnection.ConnectionString;
+            }
+            else
+            {
+                _sqlConnectionString = sqlConnectionString;
+            }
 
             (_mongoDatabase, _productCollection) = InitializeMongoStorage();
 
@@ -40,10 +46,7 @@ namespace DataTechnologies.Repositories
 
         public int Add(Product product)
         {
-            if (product == null)
-            {
-                throw new ArgumentNullException(nameof(product));
-            }
+            ArgumentNullException.ThrowIfNull(product);
 
             if (product.ProductID <= 0)
             {
@@ -56,7 +59,7 @@ namespace DataTechnologies.Repositories
             return product.ProductID;
         }
 
-        public List<Product> GetAvailableProducts()
+        public IReadOnlyCollection<Product> GetAvailableProducts()
         {
             var filter = Builders<BsonDocument>.Filter.Gt("Stock", 0);
             var documents = _productCollection
@@ -67,7 +70,7 @@ namespace DataTechnologies.Repositories
             return documents.Select(MapProduct).ToList();
         }
 
-        public List<Categories> GetCategories()
+        public IReadOnlyCollection<Categories> GetCategories()
         {
             const string sql = "SELECT * FROM Categories;";
             var categories = new List<Categories>();
@@ -89,7 +92,7 @@ namespace DataTechnologies.Repositories
             return categories;
         }
 
-        public List<ProductCategories> GetProductCategories()
+        public IReadOnlyCollection<ProductCategories> GetProductCategories()
         {
             const string sql = "SELECT * FROM ProductCategories;";
             var productCategories = new List<ProductCategories>();
@@ -111,7 +114,7 @@ namespace DataTechnologies.Repositories
             return productCategories;
         }
 
-        public List<ProductRatings> GetProductRatings()
+        public IReadOnlyCollection<ProductRatings> GetProductRatings()
         {
             const string sql = "SELECT * FROM ProductRatings;";
             var productRatings = new List<ProductRatings>();
@@ -161,8 +164,7 @@ namespace DataTechnologies.Repositories
                 Add(product);
             }
         }
-
-        private List<Product> GetDefaultProducts()
+        private static List<Product> GetDefaultProducts()
         {
             return new List<Product>
             {
@@ -197,7 +199,7 @@ namespace DataTechnologies.Repositories
             return document == null ? null : MapProduct(document);
         }
 
-        public List<Product> GetAll()
+        public IReadOnlyCollection<Product> GetAll()
         {
             var documents = _productCollection
                 .Find(FilterDefinition<BsonDocument>.Empty)
@@ -216,10 +218,7 @@ namespace DataTechnologies.Repositories
 
         public bool Update(Product product)
         {
-            if (product == null)
-            {
-                throw new ArgumentNullException(nameof(product));
-            }
+            ArgumentNullException.ThrowIfNull(product);
 
             var filter = Builders<BsonDocument>.Filter.Eq("_id", product.ProductID);
             var existing = _productCollection.Find(filter).FirstOrDefault();

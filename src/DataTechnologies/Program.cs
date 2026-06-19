@@ -1,283 +1,467 @@
-﻿using Spectre.Console;
+using Spectre.Console;
 using DotNetEnv;
+using DataTechnologies;
 using DataTechnologies.Data;
 using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
-using System.Data.Common;
 using Neo4j.Driver;
 
-AppMenuView.RenderHeader();
-Env.Load();
-
-if (!AnsiConsole.Profile.Capabilities.Interactive)
+if (args.Length > 0 && args[0] == "migrate-encrypt")
 {
-	AnsiConsole.MarkupLine("[yellow]Non-interactive terminal detected. Running default status output.[/]");
+    Env.Load();
+    string migrationDb = "team5";
+    if (args.Length > 1)
+        migrationDb = args[1];
 
-	var nonInteractiveTable = new Table()
-		.RoundedBorder()
-		.AddColumn("Check")
-		.AddColumn("Result");
+    var migrationServices = AppServices.Create(migrationDb);
+    var migrationResult = DataMigrationRepository.EncryptExistingData(migrationServices.ConnectionString, migrationServices.Cipher);
+    AnsiConsole.MarkupLine($"[green]Migratie klaar voor '{migrationDb}': {migrationResult.Users} users, {migrationResult.Addresses} adressen, {migrationResult.Orders} orders versleuteld.[/]");
 
-	nonInteractiveTable.AddRow("Project", "CLI (Spectre.Console)");
-	nonInteractiveTable.AddRow("Framework", ".NET 8");
-	nonInteractiveTable.AddRow("Mode", "Non-interactive");
+    AnsiConsole.MarkupLine("[grey]Controle (gelezen via de app, dus ontsleuteld):[/]");
+    foreach (var migratedUser in migrationServices.UserService.GetAllUsers())
+        AnsiConsole.MarkupLine($"  #{migratedUser.UserId} {Markup.Escape(migratedUser.Name)} — {Markup.Escape(migratedUser.Email)}");
 
-	AnsiConsole.Write(nonInteractiveTable);
-	return;
+    return;
 }
 
-// 1. Added session
-var session = new AppSession();
+await MainAsync();
 
-var shouldExit = false;
-
-while (!shouldExit)
+async Task MainAsync()
 {
-	AnsiConsole.Clear();
-	AppMenuView.RenderHeader();
+    AppMenuView.RenderHeader();
+    Env.Load();
 
-	var option = AppMenuView.ShowMainMenu(session);
+    var backupService = new BackupService(outputBasePath: "backups", retentionDays: 30);
+    using var backupScheduler = new BackupScheduler(backupService, intervalHours: 24);
+    backupScheduler.Start();
 
-	AnsiConsole.Clear();
-	AppMenuView.RenderHeader();
+    if (!AnsiConsole.Profile.Capabilities.Interactive)
+    {
+        AnsiConsole.MarkupLine("[yellow]Non-interactive terminal detected. Running default status output.[/]");
 
-	switch (option)
-	{
-		case MenuOptions.Login:
-			try
-			{
-				var dbConnection = new DBConnection();
-				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
-				var userService = new UserService(userRepo, new PasswordHasher());
-				UserMenu.HandleLogin(userService, session);
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Login failed: {ex.Message}[/]");
-			}
-			break;
-		case MenuOptions.Logout:
-			session.Logout();
-			AnsiConsole.MarkupLine("[yellow]You have been logged out.[/]");
-			break;
+        var table = new Table()
+            .RoundedBorder()
+            .AddColumn("Check")
+            .AddColumn("Result");
 
-		case MenuOptions.RegisterUser:
-			try
-			{
-				var dbConnection = new DBConnection();
-				var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
-				var userService = new UserService(userRepo, new PasswordHasher());
+        table.AddRow("Project", "CLI (Spectre.Console)");
+        table.AddRow("Framework", ".NET 8");
+        table.AddRow("Mode", "Non-interactive");
 
-				var email = AnsiConsole.Ask<string>("Enter email:");
-				var name = AnsiConsole.Ask<string>("Enter name:");
-				var password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password:").Secret());
+        AnsiConsole.Write(table);
+        return;
+    }
 
-				var user = new User { Email = email, Name = name, PasswordHash = password, EmailVerified = false };
-				var newUserId = userService.AddUser(user);
-				AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Registration failed: {ex.Message}[/]");
-			}
-			break;
+    var session = new AppSession();
+    var shouldExit = false;
 
-		case MenuOptions.RunDemo:
-			try
-			{
-				AnsiConsole.MarkupLine("[green]Demo gestart.[/]");
+    while (!shouldExit)
+    {
+        AnsiConsole.Clear();
+        AppMenuView.RenderHeader();
 
-				var demoOption = AppMenuView.ShowDemoMenu();
+        var option = AppMenuView.ShowMainMenu(session);
 
-				if (demoOption == MenuOptions.Back)
-				{
-					break;
-				}
+        AnsiConsole.Clear();
+        AppMenuView.RenderHeader();
 
-				Env.Load();
-				var demoDatabaseName = AnsiConsole.Ask("Enter database name for demo:", "team5");
-				var dbConnection = new DBConnection(demoDatabaseName);
-				var connectionString = dbConnection.GetConnection().ConnectionString;
+        switch (option)
+        {
+            case MenuOptions.Login:
+                try
+                {
+                    var demoDatabaseName = await AnsiConsole.AskAsync<string>(
+                        "Enter database name for demo:",
+                        defaultValue: "team5");
 
-				var neo4jUri = Env.GetString("NEO4J_URI");
-				var neo4jUser = Env.GetString("NEO4J_USER");
-				var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
-				await using var driver = GraphDatabase.Driver(neo4jUri, AuthTokens.Basic(neo4jUser, neo4jPassword));
+                    var services = AppServices.Create(demoDatabaseName);
+                    var userService = services.UserService;
 
-				try
-				{
-					await driver.VerifyConnectivityAsync();
-				}
-				catch (Exception ex)
-				{
-					AnsiConsole.MarkupLine("[red]CRITICAL ERROR: Could not connect to the Neo4j database.[/]");
-					AnsiConsole.MarkupLine($"[red]Details: {Markup.Escape(ex.Message)}[/]");
-					break;
-				}
+                    UserMenu.HandleLogin(userService, session);
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Login failed: {ex.Message}[/]");
+                }
+                break;
 
-				var repo = new ProductRepository(connectionString);
-				var graphRepository = new CategoryGraphRepository(driver);
-				var categoryAnalyticsService = new CategoryAnalyticsService(graphRepository, repo);
+            case MenuOptions.ForgotPassword:
+                try
+                {
+                    var demoDatabaseName = await AnsiConsole.AskAsync<string>(
+                        "Enter database name for demo:",
+                        defaultValue: "team5");
 
-				try
-				{
-					await categoryAnalyticsService.SyncCatalogToGraphAsync();
-				}
-				catch (Exception ex)
-				{
-					AnsiConsole.MarkupLine($"[yellow]Catalogus synchronisatie mislukt: {Markup.Escape(ex.Message)}[/]");
-				}
+                    var services = AppServices.Create(demoDatabaseName);
+                    var userService = services.UserService;
 
-				if (demoOption == MenuOptions.ShowAvailableProducts)
-				{
-					var service = new ProductBrowseService(repo);
-					var shoppingCartService = new ShoppingCartService(dbConnection);
+                    UserMenu.HandleForgotPassword(userService);
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Password reset failed: {ex.Message}[/]");
+                }
+                break;
 
-					var userRepo = new UserRepository(connectionString);
-					var userService = new UserService(userRepo, new PasswordHasher());
+            case MenuOptions.Logout:
+                session.Logout();
+                AnsiConsole.MarkupLine("[yellow]You have been logged out.[/]");
+                break;
 
-					var addressService = new AddressService(dbConnection);
+            case MenuOptions.RegisterUser:
+                try
+                {
+                    var demoDatabaseName = await AnsiConsole.AskAsync<string>(
+                        "Enter database name for demo:",
+                        defaultValue: "team5");
 
-					var orderRepo = new OrderRepository(connectionString);
-					var emailService = new EmailService(
-						smtpHost: "smtp.gmail.com",
-						smtpPort: 587,
-						fromEmail: "MythicRS@gmail.com",
-						fromPassword: "evei fycr tunu yckh"
-					);
-					var payOff = new PayOffShoppingCart(
-						userService,
-						addressService,
-						orderRepo,
-						shoppingCartService,
-						emailService,
-						categoryAnalyticsService);
+                    var services = AppServices.Create(demoDatabaseName);
+                    var userService = services.UserService;
 
-					var productOverviewScreen = new ProductOverviewScreen(service, shoppingCartService, userService, payOff, addressService, session);
-					productOverviewScreen.ShowAvailableProducts();
-				}
-				else if (demoOption == MenuOptions.PopularCategories)
-				{
-					await CategoryAnalyticsScreen.ShowPopularCategoriesAsync(categoryAnalyticsService);
-				}
-				else if (demoOption == MenuOptions.Account)
-				{
-					var userRepo = new UserRepository(connectionString);
-					var userService = new UserService(userRepo, new PasswordHasher());
+                    string email = string.Empty;
+                    do
+                    {
+                        email = await AnsiConsole.AskAsync<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                            AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                            break;
+                        }
+                    } while (true);
 
-					UserMenu.ShowUserDemo(userService, session);
-				}
+                    string name;
+                    do
+                    {
+                        name = await AnsiConsole.AskAsync<string>("Enter name:");
+                        if (string.IsNullOrWhiteSpace(name))
+                            AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
+                            break;
+                        }
+                    } while (true);
 
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Could not load products in demo: {ex.Message}[/]");
-			}
-			break;
-		case MenuOptions.ShowStatus:
-			var table = new Table()
-				.RoundedBorder()
-				.AddColumn("Check")
-				.AddColumn("Result");
+                    string password;
+                    do
+                    {
+                        password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").Secret());
+                        if (password.Length < 8)
+                            AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                            break;
+                        }
+                    } while (true);
 
-			table.AddRow("Project", "CLI (Spectre.Console)");
-			table.AddRow("Framework", ".NET 8");
-			table.AddRow("Mode", "Interactive");
+                    var user = new User { Email = email, Name = name, PasswordHash = password, EmailVerified = false };
+                    var newUserId = userService.AddUser(user);
+                    AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Registration failed: {ex.Message}[/]");
+                }
+                break;
 
-			AnsiConsole.Write(table);
-			break;
-		case MenuOptions.TestDatabaseConnection:
-			try
-			{
-				var testOption = AppMenuView.ShowTestDatabaseMenu();
+            case MenuOptions.RunDemo:
+                try
+                {
+                    AnsiConsole.MarkupLine("[green]Demo gestart.[/]");
 
-				if (testOption == MenuOptions.PostgreSqlDatabase)
-				{
-					var dbConnection = new DBConnection();
-					using var connection = dbConnection.GetConnection();
-					connection.Open();
-					AnsiConsole.MarkupLine("[green]PostgreSQL connection successful![/]");
-				}
-				else if (testOption == MenuOptions.MongoDbDatabase)
-				{
-					DBConnection.TestMongoConnection();
-					AnsiConsole.MarkupLine("[green]MongoDB connection successful![/]");
-				}
-				else if (testOption == MenuOptions.Neo4jDatabase)
-				{
-					await DBConnection.TestNeo4jConnectionAsync();
-					AnsiConsole.MarkupLine("[green]Neo4j connection successful![/]");
-				}
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Database connection failed: {ex.Message}[/]");
-			}
-			break;
-		case MenuOptions.InitializeDatabaseTables:
-			try
-			{
-				var initOption = AppMenuView.ShowInitializeMenu();
+                    var demoOption = AppMenuView.ShowDemoMenu();
 
-				if (initOption == MenuOptions.InitializeNow)
-				{
-					var dbName = AnsiConsole.Ask<string>("Enter database name:");
+                    if (demoOption == MenuOptions.ShowAvailableProducts)
+                    {
+                        var demoDatabaseName = await AnsiConsole.AskAsync<string>(
+                            "Enter database name for demo:",
+                            "team5");
 
-					AnsiConsole.Status().Start($"Initializing database '{dbName}'...", ctx =>
-					{
-						DBConnection.CreateDatabaseIfNotExists(dbName);
+                        var services = AppServices.Create(demoDatabaseName);
+                        var redisConnection = new RedisConnection();
+                        var connectionString = services.ConnectionString;
 
-						var dbConnection = new DBConnection(dbName);
-						using (var connection = dbConnection.GetConnection())
-						{
-							var repository = new DatabaseInitializerRepository();
-							repository.InitializeDatabase(connection);
-						}
-					});
+                        var neo4jUri = Env.GetString("NEO4J_URI");
+                        var neo4jUser = Env.GetString("NEO4J_USER");
+                        var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
 
-					AnsiConsole.MarkupLine($"[green]Database '{dbName}' and tables initialized successfully![/]");
-				}
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
-			}
-			break;
-		case MenuOptions.InsertTestData:
-			try
-			{
-				var dbName = AnsiConsole.Ask<string>("Enter database name (where tables exist):");
+                        await using var driver = GraphDatabase.Driver(
+                            new Uri(neo4jUri),
+                            AuthTokens.Basic(neo4jUser, neo4jPassword));
 
-				AnsiConsole.Status().Start($"Inserting test data into '{dbName}'...", ctx =>
-				{
-					var dbConnection = new DBConnection(dbName);
-					using (var connection = dbConnection.GetConnection())
-					{
-						var seeder = new TestDataSeederRepository();
-						seeder.SeedTestData(connection);
-					}
-				});
+                        try
+                        {
+                            await driver.VerifyConnectivityAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            AnsiConsole.MarkupLine("[red]Could not connect to Neo4j database.[/]");
+                            AnsiConsole.WriteException(ex);
+                            return;
+                        }
 
-				AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");
-			}
-			catch (Exception ex)
-			{
-				AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
-			}
-			break;
+                        var repo = new ProductRepository(connectionString);
+                        var service = new ProductBrowseService(repo);
+                        var cartService = new ShoppingCartServiceRedis(redisConnection);
 
-		default:
-			shouldExit = true;
-			AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");
-			break;
-	}
+                        var userService = services.UserService;
+                        var addressService = services.AddressService;
+                        var orderRepo = services.OrderRepository;
 
-	if (!shouldExit)
-	{
-		AnsiConsole.WriteLine();
-		AnsiConsole.MarkupLine("[grey]Press any key to return to main menu...[/]");
-		Console.ReadKey(true);
-	}
+                        var emailService = new EmailService(
+                            smtpHost: "smtp.gmail.com",
+                            smtpPort: 587,
+                            fromEmail: "MythicRS@gmail.com",
+                            fromPassword: "evei fycr tunu yckh"
+                        );
+
+                        var payOff = new PayOffShoppingCart(
+                            userService,
+                            addressService,
+                            orderRepo,
+                            cartService,
+                            emailService,
+                            services.PaymentCardRepository);
+
+                        var screen = new ProductOverviewScreen(
+                            service,
+                            cartService,
+                            userService,
+                            payOff,
+                            addressService,
+                            session);
+
+                        screen.ShowAvailableProducts();
+                    }
+                    else if (demoOption == MenuOptions.Account)
+                    {
+                        var demoDatabaseName = await AnsiConsole.AskAsync<string>(
+                            "Enter database name for demo:",
+                            "team5");
+
+                        var services = AppServices.Create(demoDatabaseName);
+                        var connectionString = services.ConnectionString;
+
+                        var userService = services.UserService;
+                        var orderRepository = services.OrderRepository;
+                        var productRepository = new ProductRepository(connectionString);
+                        var redisConnection = new RedisConnection();
+
+                        var cartService = new ShoppingCartServiceRedis(redisConnection);
+                        var addressService = services.AddressService;
+
+                        var emailService = new EmailService(
+                            smtpHost: "smtp.gmail.com",
+                            smtpPort: 587,
+                            fromEmail: "MythicRS@gmail.com",
+                            fromPassword: "evei fycr tunu yckh"
+                        );
+
+                        var payOffShoppingCart = new PayOffShoppingCart(
+                            userService,
+                            addressService,
+                            orderRepository,
+                            cartService,
+                            emailService,
+                            services.PaymentCardRepository);
+
+                        UserMenu.ShowUserDemo(
+                            userService,
+                            session,
+                            orderRepository,
+                            productRepository,
+                            cartService,
+                            payOffShoppingCart,
+                            addressService);
+                    }
+                    else if (demoOption == MenuOptions.PopularCategories)
+                    {
+                        var demoDatabaseName = await AnsiConsole.AskAsync<string>(
+                            "Enter database name for demo:",
+                            "team5");
+
+                        var services = AppServices.Create(demoDatabaseName);
+
+                        var neo4jUri = Env.GetString("NEO4J_URI");
+                        var neo4jUser = Env.GetString("NEO4J_USER");
+                        var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
+
+                        await using var popularDriver = GraphDatabase.Driver(
+                            new Uri(neo4jUri),
+                            AuthTokens.Basic(neo4jUser, neo4jPassword));
+
+                        try
+                        {
+                            await popularDriver.VerifyConnectivityAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            AnsiConsole.MarkupLine("[red]Could not connect to Neo4j database.[/]");
+                            AnsiConsole.WriteException(ex);
+                            break;
+                        }
+
+                        var repo = new ProductRepository(services.ConnectionString);
+                        var graphRepository = new CategoryGraphRepository(popularDriver);
+                        var categoryAnalyticsService = new CategoryAnalyticsService(graphRepository, repo);
+
+                        try
+                        {
+                            await categoryAnalyticsService.SyncCatalogToGraphAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            AnsiConsole.MarkupLine($"[yellow]Catalogus synchronisatie mislukt: {Markup.Escape(ex.Message)}[/]");
+                        }
+
+                        await CategoryAnalyticsScreen.ShowPopularCategoriesAsync(categoryAnalyticsService);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Could not load products in demo: {ex.Message}[/]");
+                }
+                break;
+
+            case MenuOptions.ShowStatus:
+                var table2 = new Table()
+                    .RoundedBorder()
+                    .AddColumn("Check")
+                    .AddColumn("Result");
+
+                table2.AddRow("Project", "CLI (Spectre.Console)");
+                table2.AddRow("Framework", ".NET 8");
+                table2.AddRow("Mode", "Interactive");
+
+                AnsiConsole.Write(table2);
+                break;
+
+            case MenuOptions.TestDatabaseConnection:
+                try
+                {
+                    var testOption = AppMenuView.ShowTestDatabaseMenu();
+
+                    if (testOption == MenuOptions.PostgreSqlDatabase)
+                    {
+                        var dbConnection = new DBConnection();
+                        using var connection = dbConnection.GetConnection();
+                        connection.Open();
+                        AnsiConsole.MarkupLine("[green]PostgreSQL connection successful![/]");
+                    }
+                    else if (testOption == MenuOptions.MongoDbDatabase)
+                    {
+                        DBConnection.TestMongoConnection();
+                        AnsiConsole.MarkupLine("[green]MongoDB connection successful![/]");
+                    }
+                    else if (testOption == MenuOptions.Neo4jDatabase)
+                    {
+                        await DBConnection.TestNeo4jConnectionAsync();
+                        AnsiConsole.MarkupLine("[green]Neo4j connection successful![/]");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Database connection failed: {ex.Message}[/]");
+                }
+                break;
+
+            case MenuOptions.InitializeDatabaseTables:
+                try
+                {
+                    var initOption = AppMenuView.ShowInitializeMenu();
+
+                    if (initOption == MenuOptions.InitializeNow)
+                    {
+                        var dbName = await AnsiConsole.AskAsync<string>("Enter database name:");
+
+                        AnsiConsole.Status().Start($"Initializing database '{dbName}'...", _ =>
+                        {
+                            DBConnection.CreateDatabaseIfNotExists(dbName);
+
+                            var dbConnection = new DBConnection(dbName);
+                            using var connection = dbConnection.GetConnection();
+
+                            DatabaseInitializerRepository.InitializeDatabase(connection);
+                        });
+
+                        AnsiConsole.MarkupLine($"[green]Database '{dbName}' and tables initialized successfully![/]");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Database initialization failed: {ex.Message}[/]");
+                }
+                break;
+
+            case MenuOptions.InsertTestData:
+                try
+                {
+                    var dbName = await AnsiConsole.AskAsync<string>(
+                        "Enter database name (where tables exist):");
+
+                    AnsiConsole.Status().Start($"Inserting test data into '{dbName}'...", _ =>
+                    {
+                        var dbConnection = new DBConnection(dbName);
+                        using var connection = dbConnection.GetConnection();
+
+                        TestDataSeederRepository.SeedTestData(connection, CryptoService.FromEnvironment());
+                    });
+
+                    AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Inserting test data failed: {ex.Message}[/]");
+                }
+                break;
+
+            case MenuOptions.BackupDatabases:
+                try
+                {
+                    BackupResult backupResult = null!;
+                    await AnsiConsole.Status().StartAsync("Running backup for all databases...", async ctx =>
+                    {
+                        backupResult = await backupService.RunFullBackupAsync();
+                    });
+
+                    if (backupResult.Success)
+                    {
+                        AnsiConsole.MarkupLine($"[green]Backup completed successfully![/]");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"[yellow]Backup completed with errors:[/]");
+                        foreach (var error in backupResult.Errors)
+                            AnsiConsole.MarkupLine($"[red]  {Markup.Escape(error)}[/]");
+                    }
+
+                    AnsiConsole.MarkupLine($"[grey]Location: {Markup.Escape(Path.GetFullPath(backupResult.BackupPath))}[/]");
+                    foreach (var entry in backupResult.Log)
+                        AnsiConsole.MarkupLine($"[grey]  {Markup.Escape(entry)}[/]");
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Backup failed: {ex.Message}[/]");
+                }
+                break;
+
+            default:
+                shouldExit = true;
+                backupScheduler.Stop();
+                AnsiConsole.MarkupLine("[yellow]Goodbye.[/]");
+                break;
+        }
+
+        if (!shouldExit)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[grey]Press any key to return to main menu...[/]");
+            Console.ReadKey(true);
+        }
+    }
 }

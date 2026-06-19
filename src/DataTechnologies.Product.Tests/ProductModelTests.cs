@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using DataTechnologies.Models;
 using Xunit;
 
 public class ProductModelTests

@@ -1,3 +1,4 @@
+using System.Globalization;
 using DataTechnologies.Models;
 using DataTechnologies.Services;
 using Spectre.Console;
@@ -8,6 +9,7 @@ public static class CategoryAnalyticsScreen
 {
     public static async Task ShowPopularCategoriesAsync(CategoryAnalyticsService analyticsService)
     {
+        ArgumentNullException.ThrowIfNull(analyticsService);
         AnsiConsole.MarkupLine("[yellow]Populaire categorieën (op basis van bestellingen)[/]");
         AnsiConsole.WriteLine();
 
@@ -31,9 +33,9 @@ public static class CategoryAnalyticsScreen
             foreach (var category in categories)
             {
                 table.AddRow(
-                    rank.ToString(),
+                    rank.ToString(CultureInfo.InvariantCulture),
                     Markup.Escape(category.CategoryName),
-                    category.PurchaseCount.ToString());
+                    category.PurchaseCount.ToString(CultureInfo.InvariantCulture));
                 rank++;
             }
 

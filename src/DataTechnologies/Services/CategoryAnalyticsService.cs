@@ -27,6 +27,7 @@ public class CategoryAnalyticsService
 
     public Task SyncCustomerToGraphAsync(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         return _graphRepository.SyncCustomerAsync(user.UserId, user.Name, user.Email);
     }
 
@@ -37,6 +38,7 @@ public class CategoryAnalyticsService
         float totalAmount,
         IEnumerable<OrderLineItem> items)
     {
+        ArgumentNullException.ThrowIfNull(customer);
         return _graphRepository.RecordOrderAsync(
             orderId,
             orderNumber,
