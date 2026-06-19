@@ -1,3 +1,4 @@
+namespace DataTechnologies.Models;
 public class CartItems
 {
     public int CartItemID { get; set; }

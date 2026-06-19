@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Xunit;
+using DataTechnologies.Models;
 
 namespace AddressTests
 {

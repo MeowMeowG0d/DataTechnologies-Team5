@@ -15,6 +15,7 @@ public class UserRepository : IUserRepository
 
     public int Add(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         const string sql = @"
             INSERT INTO Users (Email, PasswordHash, Name, EmailVerified)
             VALUES (@Email, @PasswordHash, @Name, @EmailVerified)
@@ -34,6 +35,7 @@ public class UserRepository : IUserRepository
 
     public bool Update(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         const string sql = @"
             UPDATE Users
             SET Email           = @Email,
@@ -110,7 +112,7 @@ public class UserRepository : IUserRepository
         return null;
     }
 
-    public List<Orders> GetPreviousOrders(int userId)
+    public IReadOnlyCollection<Orders> GetPreviousOrders(int userId)
     {
         const string sql = @"
             SELECT OrderID, OrderNumber, UserID, PaymentMethod, OrderStatus, TotalAmount
@@ -138,7 +140,7 @@ public class UserRepository : IUserRepository
         return orders;
     }
 
-    public List<User> GetAll()
+    public IReadOnlyCollection<User> GetAll()
     {
         const string sql = "SELECT * FROM Users;";
 

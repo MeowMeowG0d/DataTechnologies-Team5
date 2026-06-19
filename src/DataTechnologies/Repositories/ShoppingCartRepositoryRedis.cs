@@ -1,84 +1,87 @@
 using DataTechnologies.Data;
+using DataTechnologies.Models;
+using DataTechnologies.Repositories;
 using StackExchange.Redis;
 using System.Text.Json;
+using System.Globalization;
 
-public class ShoppingCartRepositoryRedis
+namespace DataTechnologies.Repositories
 {
-    private readonly IDatabase _db;
-
-    public ShoppingCartRepositoryRedis(RedisConnection redisConnection)
+    public class ShoppingCartRepositoryRedis : IShoppingCartRepository
     {
-        _db = redisConnection.GetDatabase();
-    }
+        private readonly IDatabase _db;
 
-    private string GetCartKey(int userId) => $"cart:{userId}";
-
-    public void AddOrUpdateItemInCart(int userId, CartItemFullInfo item)
-    {
-        string key = GetCartKey(userId);
-        string field = item.ProductId.ToString();
-
-        RedisValue existingValue = _db.HashGet(key, field);
-        if (existingValue.HasValue)
+        public ShoppingCartRepositoryRedis(RedisConnection redisConnection)
         {
-            var existingItem = JsonSerializer.Deserialize<CartItemFullInfo>(existingValue!);
-            if (existingItem != null)
-            {
-                item.Quantity = existingItem.Quantity + 1;
-            }
+            ArgumentNullException.ThrowIfNull(redisConnection);
+            _db = redisConnection.GetDatabase();
         }
 
-        string jsonValue = JsonSerializer.Serialize(item);
-        _db.HashSet(key, field, jsonValue);
-    }
+        private static string GetCartKey(int userId) => $"cart:{userId}";
 
-    public List<CartItemFullInfo> GetAllProductsFromCart(int userId)
-    {
-        string key = GetCartKey(userId);
-        var itemList = new List<CartItemFullInfo>();
-
-        HashEntry[] hashEntries = _db.HashGetAll(key);
-        foreach (var entry in hashEntries)
+        public void AddOrUpdateItemInCart(int userId, CartItemFullInfo item)
         {
-            if (entry.Value.HasValue)
+            ArgumentNullException.ThrowIfNull(item);
+            string key = GetCartKey(userId);
+            string field = item.ProductId.ToString(CultureInfo.InvariantCulture);
+
+            RedisValue existingValue = _db.HashGet(key, field);
+
+            if (existingValue.HasValue)
+            {
+                var existingItem = JsonSerializer.Deserialize<CartItemFullInfo>(existingValue!);
+
+                if (existingItem != null)
+                {
+                    item.Quantity = existingItem.Quantity + item.Quantity;
+                }
+            }
+
+            string jsonValue = JsonSerializer.Serialize(item);
+            _db.HashSet(key, field, jsonValue);
+        }
+
+        public IReadOnlyCollection<CartItemFullInfo> GetAllProductsFromCart(int userId)
+        {
+            string key = GetCartKey(userId);
+
+            var items = new List<CartItemFullInfo>();
+            var hash = _db.HashGetAll(key);
+
+            foreach (var entry in hash)
             {
                 var item = JsonSerializer.Deserialize<CartItemFullInfo>(entry.Value!);
                 if (item != null)
-                {
-                    itemList.Add(item);
-                }
+                    items.Add(item);
             }
-        }
-        return itemList;
-    }
 
-    public void UpdateCartItemQuantity(int userId, int productId, int newQuantity)
-    {
-        string key = GetCartKey(userId);
-        string field = productId.ToString();
-
-        if (newQuantity <= 0)
-        {
-            _db.HashDelete(key, field);
-            return;
+            return items;
         }
 
-        RedisValue existingValue = _db.HashGet(key, field);
-        if (existingValue.HasValue)
+        public void UpdateCartItemQuantity(int userId, int productId, int newQuantity)
         {
-            var item = JsonSerializer.Deserialize<CartItemFullInfo>(existingValue!);
+
+            string key = GetCartKey(userId);
+            string field = productId.ToString(CultureInfo.InvariantCulture);
+
+            if (newQuantity <= 0)
+            {
+                _db.HashDelete(key, field);
+                return;
+            }
+
+            var item = JsonSerializer.Deserialize<CartItemFullInfo>(_db.HashGet(key, field)!);
+
             if (item != null)
             {
                 item.Quantity = newQuantity;
-                string jsonValue = JsonSerializer.Serialize(item);
-                _db.HashSet(key, field, jsonValue);
+                _db.HashSet(key, field, JsonSerializer.Serialize(item));
             }
         }
-    }
 
-    public void ClearCart(int userId)
-    {
-        string key = GetCartKey(userId);
-        _db.KeyDelete(key);
+        public void ClearCart(int userId)
+        {
+            _db.KeyDelete(GetCartKey(userId));
+        }
     }
 }

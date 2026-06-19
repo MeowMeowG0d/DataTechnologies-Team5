@@ -1,7 +1,8 @@
+namespace DataTechnologies.Models;
 public class DiscountCodes
 {
     public int CodeID { get; set; }
-    public string Code {get; set; }
+    public string Code {get; set; } = string.Empty;
     public int DiscountPercentage { get; set; }
 
     public bool IsActive { get; set; }

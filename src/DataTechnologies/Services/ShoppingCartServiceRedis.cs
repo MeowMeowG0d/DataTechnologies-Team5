@@ -1,64 +1,63 @@
-using System;
-using System.Collections.Generic;
 using DataTechnologies.Data;
+using DataTechnologies.Models;
+using DataTechnologies.Repositories;
 
-public class ShoppingCartServiceRedis
+namespace DataTechnologies.Services
 {
-    private readonly ShoppingCartRepositoryRedis _SHRepository;
-
-    public ShoppingCartServiceRedis(RedisConnection redisConnection)
+    public class ShoppingCartServiceRedis
     {
-        _SHRepository = new ShoppingCartRepositoryRedis(redisConnection);
-    }
+        private readonly IShoppingCartRepository _repository;
 
-    public decimal CalculateSubTotalPrice(int userId)
-    {
-        List<CartItemFullInfo> items = _SHRepository.GetAllProductsFromCart(userId);
-        decimal totalPrice = 0;
-
-        foreach (var item in items)
+        public ShoppingCartServiceRedis(IShoppingCartRepository repository)
         {
-            totalPrice += item.Quantity * item.Price;
+            ArgumentNullException.ThrowIfNull(repository);
+            _repository = repository;
         }
 
-        return Math.Round(totalPrice, 2);
-    }
-
-    public decimal CalculateTotalPrice(int userId, decimal shippingPrice = 2)
-    {
-        decimal subTotal = CalculateSubTotalPrice(userId);
-
-        return subTotal > 0 ? subTotal + shippingPrice : 0;
-    }
-
-    public void AddItemToCart(CartItemFullInfo item, int userId)
-    {
-        _SHRepository.AddOrUpdateItemInCart(userId, item);
-    }
-
-    public List<CartItemFullInfo> GetAllProductsFromCart(int userId)
-    {
-        return _SHRepository.GetAllProductsFromCart(userId);
-    }
-
-    public void UpdateCartItemQuantity(int productId, int userId, int newQuantity)
-    {
-        _SHRepository.UpdateCartItemQuantity(userId, productId, newQuantity);
-    }
-
-    public void ClearCart(int userId)
-    {
-        _SHRepository.ClearCart(userId);
-    }
-
-    public int GetTotalItemsInCart(int userId)
-    {
-        var items = _SHRepository.GetAllProductsFromCart(userId);
-        int totalCount = 0;
-        foreach (var item in items)
+        public ShoppingCartServiceRedis(RedisConnection redisConnection)
         {
-            totalCount += item.Quantity;
+            ArgumentNullException.ThrowIfNull(redisConnection);
+            _repository = new ShoppingCartRepositoryRedis(redisConnection);
         }
-        return totalCount;
+
+        public decimal CalculateSubTotalPrice(int userId)
+        {
+            var items = _repository.GetAllProductsFromCart(userId);
+
+            decimal total = 0;
+            foreach (var item in items)
+                total += item.Price * item.Quantity;
+
+            return Math.Round(total, 2);
+        }
+
+        public decimal CalculateTotalPrice(int userId, decimal shippingPrice = 2)
+        {
+            var subTotal = CalculateSubTotalPrice(userId);
+            return subTotal > 0 ? subTotal + shippingPrice : 0;
+        }
+
+        public void AddItemToCart(CartItemFullInfo item, int userId)
+            => _repository.AddOrUpdateItemInCart(userId, item);
+
+        public IReadOnlyCollection<CartItemFullInfo> GetAllProductsFromCart(int userId)  // CA1002
+            => _repository.GetAllProductsFromCart(userId);
+
+        public void UpdateCartItemQuantity(int productId, int userId, int newQuantity)
+            => _repository.UpdateCartItemQuantity(userId, productId, newQuantity);
+
+        public void ClearCart(int userId)
+            => _repository.ClearCart(userId);
+
+        public int GetTotalItemsInCart(int userId)
+        {
+            var items = _repository.GetAllProductsFromCart(userId);
+
+            int total = 0;
+            foreach (var item in items)
+                total += item.Quantity;
+
+            return total;
+        }
     }
 }
