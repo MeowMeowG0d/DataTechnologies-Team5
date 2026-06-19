@@ -100,11 +100,11 @@ async Task MainAsync()
                     var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
                     var userService = new UserService(userRepo, new PasswordHasher());
 
-                    string email;
+                    string email = string.Empty;
                     do
                     {
-                        email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                        email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
                             AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
                         else
                         {

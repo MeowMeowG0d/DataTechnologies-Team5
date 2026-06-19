@@ -13,11 +13,11 @@ public static class UserMenu
         ArgumentNullException.ThrowIfNull(userService);
         ArgumentNullException.ThrowIfNull(session);
 
-        string email;
+        string email = string.Empty;
         do
         {
-            email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
-            if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
                 AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
             else
             {
@@ -55,11 +55,11 @@ public static class UserMenu
     {
         ArgumentNullException.ThrowIfNull(userService);
 
-        string email;
+        string email = string.Empty;
         do
         {
-            email = AnsiConsole.Ask<string>("Enter your email to reset your password (e.g., name@domain.com):");
-            if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            email = AnsiConsole.Ask<string>("Enter your email to reset your password (e.g., name@domain.com):") ?? string.Empty;
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
                 AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
             else
             {
