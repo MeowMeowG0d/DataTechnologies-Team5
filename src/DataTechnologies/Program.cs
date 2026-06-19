@@ -1,4 +1,4 @@
-﻿using Spectre.Console;
+using Spectre.Console;
 using DotNetEnv;
 using DataTechnologies;
 using DataTechnologies.Data;
@@ -116,18 +116,46 @@ async Task MainAsync()
                     var services = AppServices.Create(demoDatabaseName);
                     var userService = services.UserService;
 
-                    var email = await AnsiConsole.AskAsync<string>("Enter email:");
-                    var name = await AnsiConsole.AskAsync<string>("Enter name:");
-                    var password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password:").Secret());
-
-                    var user = new User
+                    string email = string.Empty;
+                    do
                     {
-                        Email = email,
-                        Name = name,
-                        PasswordHash = password,
-                        EmailVerified = false
-                    };
+                        email = await AnsiConsole.AskAsync<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                            AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                            break;
+                        }
+                    } while (true);
 
+                    string name;
+                    do
+                    {
+                        name = await AnsiConsole.AskAsync<string>("Enter name:");
+                        if (string.IsNullOrWhiteSpace(name))
+                            AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
+                            break;
+                        }
+                    } while (true);
+
+                    string password;
+                    do
+                    {
+                        password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").Secret());
+                        if (password.Length < 8)
+                            AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                            break;
+                        }
+                    } while (true);
+
+                    var user = new User { Email = email, Name = name, PasswordHash = password, EmailVerified = false };
                     var newUserId = userService.AddUser(user);
                     AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
                 }
@@ -154,7 +182,6 @@ async Task MainAsync()
                         var redisConnection = new RedisConnection();
                         var connectionString = services.ConnectionString;
 
-                        // 🔴 FIXED NEO4J
                         var neo4jUri = Env.GetString("NEO4J_URI");
                         var neo4jUser = Env.GetString("NEO4J_USER");
                         var neo4jPassword = Env.GetString("NEO4J_PASSWORD");

@@ -13,9 +13,31 @@ public static class UserMenu
         ArgumentNullException.ThrowIfNull(userService);
         ArgumentNullException.ThrowIfNull(session);
 
-        var email = AnsiConsole.Ask<string>("Enter email:");
-        var password = AnsiConsole.Prompt(
-            new TextPrompt<string>("Enter password:").PromptStyle("red").Secret());
+        string email = string.Empty;
+        do
+        {
+            email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                break;
+            }
+        } while (true);
+
+        string password;
+        do
+        {
+            password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").PromptStyle("red").Secret());
+            if (password.Length < 8)
+                AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                break;
+            }
+        } while (true);
 
         if (userService.Authenticate(email, password))
         {
@@ -32,7 +54,19 @@ public static class UserMenu
     public static void HandleForgotPassword(UserService userService)
     {
         ArgumentNullException.ThrowIfNull(userService);
-        var email = AnsiConsole.Ask<string>("Enter your email to reset your password:");
+
+        string email = string.Empty;
+        do
+        {
+            email = AnsiConsole.Ask<string>("Enter your email to reset your password (e.g., name@domain.com):") ?? string.Empty;
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
+            else
+            {
+                AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
+                break;
+            }
+        } while (true);
 
         if (userService.GetUserByEmail(email) == null)
         {
@@ -277,16 +311,15 @@ public static class UserMenu
                             Price = (decimal)product.Price,
                             Quantity = line.Quantity
                         }, session.UserId);
+                        addedCount++;
                     }
 
                     if (unavailable.Count > 0)
                     {
                         AnsiConsole.MarkupLine("[red]De volgende producten zijn niet meer beschikbaar:[/]");
-                        foreach (var name in unavailable)
-                            AnsiConsole.MarkupLine($"[red]- {name}[/]");
+                        foreach (var unavailableName in unavailable)
+                            AnsiConsole.MarkupLine($"[red]- {unavailableName}[/]");
                     }
-
-                    AnsiConsole.MarkupLine($"[green]product(en) toegevoegd aan de winkelwagen.[/]");
 
                     AnsiConsole.MarkupLine($"[green]{addedCount} product(en) toegevoegd aan de winkelwagen.[/]");
 
@@ -318,11 +351,11 @@ public static class UserMenu
 
         foreach (var user in users)
             usersTable.AddRow(
-            user.UserId.ToString(CultureInfo.InvariantCulture),
-            user.Email,
-            user.Name,
-            user.EmailVerified.ToString()
-        );
+                user.UserId.ToString(CultureInfo.InvariantCulture),
+                user.Email,
+                user.Name,
+                user.EmailVerified.ToString()
+            );
 
         AnsiConsole.Write(usersTable);
     }
