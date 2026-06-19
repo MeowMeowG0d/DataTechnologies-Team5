@@ -1,5 +1,6 @@
 ﻿using Spectre.Console;
 using DotNetEnv;
+using DataTechnologies;
 using DataTechnologies.Data;
 using DataTechnologies.Models;
 using DataTechnologies.Repositories;
@@ -53,9 +54,8 @@ async Task MainAsync()
                         "Enter database name for demo:",
                         defaultValue: "team5");
 
-                    var dbConnection = new DBConnection(demoDatabaseName);
-                    var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
-                    var userService = new UserService(userRepo, new PasswordHasher());
+                    var services = AppServices.Create(demoDatabaseName);
+                    var userService = services.UserService;
 
                     UserMenu.HandleLogin(userService, session);
                 }
@@ -72,9 +72,8 @@ async Task MainAsync()
                         "Enter database name for demo:",
                         defaultValue: "team5");
 
-                    var dbConnection = new DBConnection(demoDatabaseName);
-                    var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
-                    var userService = new UserService(userRepo, new PasswordHasher());
+                    var services = AppServices.Create(demoDatabaseName);
+                    var userService = services.UserService;
 
                     UserMenu.HandleForgotPassword(userService);
                 }
@@ -96,9 +95,8 @@ async Task MainAsync()
                         "Enter database name for demo:",
                         defaultValue: "team5");
 
-                    var dbConnection = new DBConnection(demoDatabaseName);
-                    var userRepo = new UserRepository(dbConnection.GetConnection().ConnectionString);
-                    var userService = new UserService(userRepo, new PasswordHasher());
+                    var services = AppServices.Create(demoDatabaseName);
+                    var userService = services.UserService;
 
                     var email = await AnsiConsole.AskAsync<string>("Enter email:");
                     var name = await AnsiConsole.AskAsync<string>("Enter name:");
@@ -134,9 +132,9 @@ async Task MainAsync()
                             "Enter database name for demo:",
                             "team5");
 
-                        var dbConnection = new DBConnection(demoDatabaseName);
+                        var services = AppServices.Create(demoDatabaseName);
                         var redisConnection = new RedisConnection();
-                        var connectionString = dbConnection.GetConnection().ConnectionString;
+                        var connectionString = services.ConnectionString;
 
                         // 🔴 FIXED NEO4J
                         var neo4jUri = Env.GetString("NEO4J_URI");
@@ -162,12 +160,11 @@ async Task MainAsync()
                         var service = new ProductBrowseService(repo);
                         var cartService = new ShoppingCartServiceRedis(redisConnection);
 
-                        var userRepo = new UserRepository(connectionString);
-                        var userService = new UserService(userRepo, new PasswordHasher());
+                        var userService = services.UserService;
 
-                        var addressService = new AddressService(dbConnection);
+                        var addressService = services.AddressService;
 
-                        var orderRepo = new OrderRepository(connectionString);
+                        var orderRepo = services.OrderRepository;
 
                         var emailService = new EmailService(
                             smtpHost: "smtp.gmail.com",
@@ -181,7 +178,8 @@ async Task MainAsync()
                             addressService,
                             orderRepo,
                             cartService,
-                            emailService);
+                            emailService,
+                            services.PaymentCardRepository);
 
                         var screen = new ProductOverviewScreen(
                             service,
@@ -199,17 +197,16 @@ async Task MainAsync()
                             "Enter database name for demo:",
                             "team5");
 
-                        var dbConnection = new DBConnection(demoDatabaseName);
-                        var connectionString = dbConnection.GetConnection().ConnectionString;
+                        var services = AppServices.Create(demoDatabaseName);
+                        var connectionString = services.ConnectionString;
 
-                        var userRepo = new UserRepository(connectionString);
-                        var userService = new UserService(userRepo, new PasswordHasher());
-                        var orderRepository = new OrderRepository(connectionString);
+                        var userService = services.UserService;
+                        var orderRepository = services.OrderRepository;
                         var productRepository = new ProductRepository(connectionString);
                         var redisConnection = new RedisConnection();
 
                         var cartService = new ShoppingCartServiceRedis(redisConnection);
-                        var addressService = new AddressService(dbConnection);
+                        var addressService = services.AddressService;
 
                         var emailService = new EmailService(
                             smtpHost: "smtp.gmail.com",
@@ -223,7 +220,8 @@ async Task MainAsync()
                             addressService,
                             orderRepository,
                             cartService,
-                            emailService);
+                            emailService,
+                            services.PaymentCardRepository);
 
                         UserMenu.ShowUserDemo(
                             userService,
@@ -317,7 +315,7 @@ async Task MainAsync()
                         var dbConnection = new DBConnection(dbName);
                         using var connection = dbConnection.GetConnection();
 
-                        TestDataSeederRepository.SeedTestData(connection);
+                        TestDataSeederRepository.SeedTestData(connection, CryptoService.FromEnvironment());
                     });
 
                     AnsiConsole.MarkupLine($"[green]Dummy data successfully inserted into '{dbName}'![/]");

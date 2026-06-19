@@ -4,6 +4,7 @@ using Spectre.Console;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net.Mail;
 using System.Net.Sockets;
 using DataTechnologies.Models;
@@ -15,16 +16,18 @@ public class PayOffShoppingCart
     private readonly UserService _userService;
     private readonly AddressService _addressService;
     private readonly OrderRepository _orderRepository;
-    private readonly ShoppingCartServiceRedis _shoppingCartService; 
+    private readonly ShoppingCartServiceRedis _shoppingCartService;
     private readonly EmailService _emailService;
+    private readonly PaymentCardRepository _paymentCardRepository;
 
-    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartServiceRedis shoppingCartService, EmailService emailService)
+    public PayOffShoppingCart(UserService userService, AddressService addressService, OrderRepository orderRepository, ShoppingCartServiceRedis shoppingCartService, EmailService emailService, PaymentCardRepository paymentCardRepository)
     {
         _userService = userService;
         _addressService = addressService;
         _orderRepository = orderRepository;
         _shoppingCartService = shoppingCartService;
         _emailService = emailService;
+        _paymentCardRepository = paymentCardRepository;
     }
 
         public static bool CheckAccountExistanc(int UserID)
@@ -142,12 +145,74 @@ public class PayOffShoppingCart
                     .Title("Kies je betaalmethode:")
                     .AddChoices("iDEAL", "Klarna", "Creditcard", "PayPal"));
 
+             PaymentCard? card = null;
+             if (paymentMethod == "Creditcard")
+                 card = PromptForCard();
+
              AnsiConsole.MarkupLine("[yellow]Bevestiging[/]");
              AnsiConsole.MarkupLine($"[yellow]Je betaalmethode is nu {paymentMethod}[/]");
-             Confirmation(UserID, Name, EmailAddress, Address, paymentMethod, totalAmount);
+             Confirmation(UserID, Name, EmailAddress, Address, paymentMethod, totalAmount, card);
         }
 
-        public void Confirmation(int UserID, string Name, string EmailAddress, DataTechnologies.Models.Addresses Address, string PaymentMethod, decimal totalAmount)
+        private static PaymentCard PromptForCard()
+        {
+            string holder = AnsiConsole.Prompt(
+                new TextPrompt<string>("Naam op de kaart:")
+                    .Validate(value =>
+                    {
+                        if (string.IsNullOrWhiteSpace(value))
+                            return ValidationResult.Error("[red]Naam op de kaart is verplicht.[/]");
+                        return ValidationResult.Success();
+                    }));
+
+            string number = AnsiConsole.Prompt(
+                new TextPrompt<string>("Kaartnummer:")
+                    .Secret()
+                    .Validate(value =>
+                    {
+                        string digits = value.Replace(" ", "", StringComparison.Ordinal);
+                        if (digits.Length is >= 13 and <= 19 && digits.All(char.IsDigit))
+                            return ValidationResult.Success();
+                        return ValidationResult.Error("[red]Voer een geldig kaartnummer in (13-19 cijfers).[/]");
+                    }));
+
+            string expiry = AnsiConsole.Prompt(
+                new TextPrompt<string>("Vervaldatum (MM/JJ):")
+                    .Validate(value =>
+                    {
+                        if (System.Text.RegularExpressions.Regex.IsMatch(value, @"^(0[1-9]|1[0-2])\/\d{2}$"))
+                            return ValidationResult.Success();
+                        return ValidationResult.Error("[red]Gebruik het formaat MM/JJ.[/]");
+                    }));
+
+            // CVV wordt wel gevraagd maar bewust NOOIT opgeslagen (PCI-DSS).
+            _ = AnsiConsole.Prompt(
+                new TextPrompt<string>("CVV:")
+                    .Secret()
+                    .Validate(value =>
+                    {
+                        if (System.Text.RegularExpressions.Regex.IsMatch(value, @"^\d{3,4}$"))
+                            return ValidationResult.Success();
+                        return ValidationResult.Error("[red]CVV bestaat uit 3 of 4 cijfers.[/]");
+                    }));
+
+            return new PaymentCard
+            {
+                CardHolder = holder,
+                CardNumber = number.Replace(" ", "", StringComparison.Ordinal),
+                Expiry = expiry
+            };
+        }
+
+        private static string Last4(string cardNumber)
+        {
+            string digits = cardNumber.Replace(" ", "", StringComparison.Ordinal);
+            if (digits.Length >= 4)
+                return digits[^4..];
+            return digits;
+        }
+
+        public void Confirmation(int UserID, string Name, string EmailAddress, DataTechnologies.Models.Addresses Address, string PaymentMethod, decimal totalAmount, PaymentCard? card = null)
         {
             ArgumentNullException.ThrowIfNull(Address);
 
@@ -167,6 +232,8 @@ public class PayOffShoppingCart
 
             AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
             AnsiConsole.MarkupLine($"[grey]Betaalmethode:[/] {PaymentMethod}");
+            if (card != null)
+                AnsiConsole.MarkupLine($"[grey]Kaart:[/] •••• {Last4(card.CardNumber)}");
 
             AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
             AnsiConsole.MarkupLine("[grey]Producten:[/]");
@@ -253,6 +320,12 @@ public class PayOffShoppingCart
                 };
 
                 int newOrderId = _orderRepository.Add(order);
+
+                if (card != null)
+                {
+                    card.OrderId = newOrderId;
+                    _paymentCardRepository.Add(card);
+                }
 
                 var orderLines = new List<OrderLine>();
                 if (items != null)
