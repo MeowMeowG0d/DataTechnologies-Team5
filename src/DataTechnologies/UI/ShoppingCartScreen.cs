@@ -2,7 +2,6 @@ using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using Spectre.Console;
 using System.Collections.Generic;
-using System.Data;
 
 namespace DataTechnologies.UI
 {

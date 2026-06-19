@@ -5,7 +5,6 @@ using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
-using System.Data.Common;
 using Neo4j.Driver;
 
 AppMenuView.RenderHeader();
