@@ -1,15 +1,17 @@
 using DataTechnologies.Data;
 using DataTechnologies.Repositories;
-
+using DataTechnologies.Models;
+using System.Globalization;
 namespace DataTechnologies.Services;
+
 
 public class AddressService
 {
     private readonly AddressRepository _addressRepository;
 
-    public AddressService(DBConnection dbConnection)
+    public AddressService(DBConnection dbConnection, IFieldCipher cipher)
     {
-        _addressRepository = new AddressRepository(dbConnection);
+        _addressRepository = new AddressRepository(dbConnection, cipher);
     }
 
     public int SaveAddress(int userId, string street, string number, string postcode, string city, string country, string? type)
@@ -25,7 +27,7 @@ public class AddressService
             UserID   = userId,
             Street   = street,
             Number   = number,
-            Postcode = postcode.ToUpper(),
+            Postcode = postcode.ToUpper(CultureInfo.InvariantCulture),
             city     = city,
             Country  = country,
             Type     = type ?? string.Empty

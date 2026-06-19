@@ -1,6 +1,9 @@
 using Spectre.Console;
 using DataTechnologies.Models;
 using DataTechnologies.Services;
+using DataTechnologies.Utils;
+using DataTechnologies.Repositories;
+using System.Globalization;
 
 namespace DataTechnologies.UI;
 
@@ -8,11 +11,14 @@ public static class UserMenu
 {
     public static void HandleLogin(UserService userService, AppSession session)
     {
-        string email;
+        ArgumentNullException.ThrowIfNull(userService);
+        ArgumentNullException.ThrowIfNull(session);
+
+        string email = string.Empty;
         do
         {
-            email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
-            if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
                 AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
             else
             {
@@ -48,11 +54,13 @@ public static class UserMenu
 
     public static void HandleForgotPassword(UserService userService)
     {
-        string email;
+        ArgumentNullException.ThrowIfNull(userService);
+
+        string email = string.Empty;
         do
         {
-            email = AnsiConsole.Ask<string>("Enter your email to reset your password (e.g., name@domain.com):");
-            if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            email = AnsiConsole.Ask<string>("Enter your email to reset your password (e.g., name@domain.com):") ?? string.Empty;
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
                 AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
             else
             {
@@ -69,31 +77,24 @@ public static class UserMenu
 
         AnsiConsole.MarkupLine("[green]Account found. You can now set a new password.[/]");
 
-        string newPassword;
-        do
-        {
-            newPassword = AnsiConsole.Prompt(new TextPrompt<string>("Enter new password (min. 8 characters):").PromptStyle("red").Secret());
-            if (newPassword.Length < 8)
-                AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
-            else
-            {
-                AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
-                break;
-            }
-        } while (true);
+        var newPassword = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter new password (min. 8 characters):")
+                .PromptStyle("red")
+                .Secret()
+                .Validate(p => InputWhitelistValidator.IsValidPassword(p)
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
 
-        string confirmPassword;
-        do
+        var confirmPassword = AnsiConsole.Prompt(
+            new TextPrompt<string>("Confirm new password:")
+                .PromptStyle("red")
+                .Secret());
+
+        if (newPassword != confirmPassword)
         {
-            confirmPassword = AnsiConsole.Prompt(new TextPrompt<string>("Confirm new password:").PromptStyle("red").Secret());
-            if (newPassword != confirmPassword)
-                AnsiConsole.MarkupLine("[red]Passwords do not match. Please try again.[/]");
-            else
-            {
-                AnsiConsole.MarkupLine("[green]✔ Passwords match.[/]");
-                break;
-            }
-        } while (true);
+            AnsiConsole.MarkupLine("[red]Passwords do not match. Password was not reset.[/]");
+            return;
+        }
 
         if (userService.ResetPassword(email, newPassword))
             AnsiConsole.MarkupLine("[green]Password reset successfully! You can now log in with your new password.[/]");
@@ -101,50 +102,31 @@ public static class UserMenu
             AnsiConsole.MarkupLine("[red]Failed to reset password.[/]");
     }
 
-    public static void ShowUserDemo(UserService userService, AppSession session)
+    public static void ShowUserDemo(
+        UserService userService,
+        AppSession session,
+        OrderRepository orderRepository,
+        ProductRepository productRepository,
+        ShoppingCartServiceRedis cartService,
+        PayOffShoppingCart payOffShoppingCart,
+        AddressService addressService)
     {
+        ArgumentNullException.ThrowIfNull(userService);
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(orderRepository);
+        ArgumentNullException.ThrowIfNull(productRepository);
+        ArgumentNullException.ThrowIfNull(cartService);
+        ArgumentNullException.ThrowIfNull(payOffShoppingCart);
+        ArgumentNullException.ThrowIfNull(addressService);
         var userOption = AppMenuView.ShowAccountMenu(session);
 
         if (userOption == MenuOptions.RegisterUser)
         {
-            string email;
-            do
-            {
-                email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
-                if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                    AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
-                    break;
-                }
-            } while (true);
-
-            string name;
-            do
-            {
-                name = AnsiConsole.Ask<string>("Enter name:");
-                if (string.IsNullOrWhiteSpace(name))
-                    AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
-                    break;
-                }
-            } while (true);
-
-            string password;
-            do
-            {
-                password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").Secret());
-                if (password.Length < 8)
-                    AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
-                    break;
-                }
-            } while (true);
+            var email = AnsiConsole.Ask<string>("Enter email:");
+            var name = AnsiConsole.Ask<string>("Enter name:");
+            var password = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter password:")
+                    .Secret());
 
             var user = new User
             {
@@ -160,31 +142,11 @@ public static class UserMenu
         }
         else if (userOption == MenuOptions.Login)
         {
-            string email;
-            do
-            {
-                email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):");
-                if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                    AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
-                    break;
-                }
-            } while (true);
-
-            string password;
-            do
-            {
-                password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").PromptStyle("red").Secret());
-                if (password.Length < 8)
-                    AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
-                    break;
-                }
-            } while (true);
+            var email = AnsiConsole.Ask<string>("Enter email:");
+            var password = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter password:")
+                    .PromptStyle("red")
+                    .Secret());
 
             if (userService.Authenticate(email, password))
             {
@@ -211,44 +173,13 @@ public static class UserMenu
                 return;
             }
 
-            string email;
-            do
-            {
-                email = AnsiConsole.Ask<string>($"Enter new email (current: {existingUser.Email}) (e.g., name@domain.com):", existingUser.Email);
-                if (!System.Text.RegularExpressions.Regex.IsMatch(email ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                    AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
-                    break;
-                }
-            } while (true);
-
-            string name;
-            do
-            {
-                name = AnsiConsole.Ask<string>($"Enter new name (current: {existingUser.Name}):", existingUser.Name);
-                if (string.IsNullOrWhiteSpace(name))
-                    AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
-                    break;
-                }
-            } while (true);
-
-            string password;
-            do
-            {
-                password = AnsiConsole.Prompt(new TextPrompt<string>("Enter new password (min. 8 characters, leave blank to keep current):").Secret().PromptStyle("red").AllowEmpty());
-                if (!string.IsNullOrEmpty(password) && password.Length < 8)
-                    AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
-                else
-                {
-                    AnsiConsole.MarkupLine(string.IsNullOrEmpty(password) ? "[green]✔ Keeping current password.[/]" : "[green]✔ New password criteria met.[/]");
-                    break;
-                }
-            } while (true);
+            var email = AnsiConsole.Ask<string>($"Enter new email (current: {existingUser.Email}):", existingUser.Email);
+            var name = AnsiConsole.Ask<string>($"Enter new name (current: {existingUser.Name}):", existingUser.Name);
+            var password = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter new password (leave blank to keep current):")
+                    .Secret()
+                    .PromptStyle("red")
+                    .AllowEmpty());
 
             var updatedUser = new User
             {
@@ -288,7 +219,7 @@ public static class UserMenu
                 else
                     AnsiConsole.MarkupLine("[red]Failed to delete user. User may not exist.[/]");
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
             }
@@ -317,7 +248,7 @@ public static class UserMenu
 
                 foreach (var order in orders)
                     ordersTable.AddRow(
-                        order.OrderID.ToString(),
+                        order.OrderID.ToString(CultureInfo.InvariantCulture),
                         order.OrderNumber,
                         order.PaymentMethod,
                         order.OrderStatus,
@@ -325,15 +256,92 @@ public static class UserMenu
                     );
 
                 AnsiConsole.Write(ordersTable);
+
+                var orderId = AnsiConsole.Ask<int>("Enter Order ID to view details (or 0 to go back):");
+                if (orderId == 0) return;
+
+                var lines = orderRepository.GetOrderLines(orderId);
+                if (lines.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No product details found for this order.[/]");
+                    return;
+                }
+
+                var detailTable = new Table()
+                    .RoundedBorder()
+                    .AddColumn("Product")
+                    .AddColumn("Quantity")
+                    .AddColumn("Unit Price");
+
+                foreach (var line in lines)
+                {
+                    var product = productRepository.GetById(line.ProductID);
+                    detailTable.AddRow(
+                        product?.Name ?? $"Product #{line.ProductID}",
+                        line.Quantity.ToString(CultureInfo.InvariantCulture),
+                        $"€{line.UnitPrice:F2}"
+                    );
+                }
+
+                AnsiConsole.Write(detailTable);
+
+                var reorder = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Opnieuw bestellen?")
+                        .AddChoices("Opnieuw bestellen", "Terug"));
+
+                if (reorder == "Opnieuw bestellen")
+                {
+                    var unavailable = new List<string>();
+                    var addedCount = 0;
+
+                    foreach (var line in lines)
+                    {
+                        var product = productRepository.GetById(line.ProductID);
+
+                        if (product is null || product.Stock <= 0)
+                        {
+                            unavailable.Add(product?.Name ?? $"Product #{line.ProductID}");
+                            continue;
+                        }
+
+                        cartService.AddItemToCart(new CartItemFullInfo
+                        {
+                            ProductId = product.ProductID,
+                            ProductName = product.Name,
+                            Price = (decimal)product.Price,
+                            Quantity = line.Quantity
+                        }, session.UserId);
+                        addedCount++;
+                    }
+
+                    if (unavailable.Count > 0)
+                    {
+                        AnsiConsole.MarkupLine("[red]De volgende producten zijn niet meer beschikbaar:[/]");
+                        foreach (var unavailableName in unavailable)
+                            AnsiConsole.MarkupLine($"[red]- {unavailableName}[/]");
+                    }
+
+                    AnsiConsole.MarkupLine($"[green]{addedCount} product(en) toegevoegd aan de winkelwagen.[/]");
+
+                    if (unavailable.Count == 0 || addedCount > 0)
+                    {
+                        AnsiConsole.MarkupLine("[grey]Druk op een toets om naar de winkelwagen te gaan...[/]");
+                        Console.ReadKey(true);
+
+                        var cartScreen = new ShoppingCartScreen(cartService, session.UserId, userService, payOffShoppingCart, addressService);
+                        cartScreen.ShowCartOverview();
+                    }
+                }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 AnsiConsole.MarkupLine($"[red]Error loading orders: {ex.Message}[/]");
             }
         }
     }
 
-    private static void DisplayUsers(List<User> users)
+    private static void DisplayUsers(IReadOnlyCollection<User> users)
     {
         var usersTable = new Table()
             .RoundedBorder()
@@ -343,7 +351,12 @@ public static class UserMenu
             .AddColumn("Verified");
 
         foreach (var user in users)
-            usersTable.AddRow(user.UserId.ToString(), user.Email, user.Name, user.EmailVerified.ToString());
+            usersTable.AddRow(
+                user.UserId.ToString(CultureInfo.InvariantCulture),
+                user.Email,
+                user.Name,
+                user.EmailVerified.ToString()
+            );
 
         AnsiConsole.Write(usersTable);
     }

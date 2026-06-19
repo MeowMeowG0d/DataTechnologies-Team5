@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+namespace DataTechnologies.Models;
+
 public class Addresses
 {
     public int AddresID { get; set; }

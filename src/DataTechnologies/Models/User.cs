@@ -2,13 +2,35 @@ namespace DataTechnologies.Models;
 
 public class User : IComparable<User>, IEquatable<User>
 {
+
+    public static bool operator <(User? left, User? right)
+    {
+        if (left is null)
+            return right is not null;
+
+        return left.CompareTo(right) < 0;
+    }
+
+    public static bool operator >(User? left, User? right)
+    {
+        return right < left;
+    }
+
+    public static bool operator <=(User? left, User? right)
+    {
+        return !(right < left);
+    }
+
+    public static bool operator >=(User? left, User? right)
+    {
+        return !(left < right);
+    }
+    
     public int UserId { get; set; }
     public required string Email { get; set; }
     public required string PasswordHash { get; set; }
     public required string Name { get; set; }
     public bool EmailVerified { get; set; }
-
-    public override string ToString() => $"ID: {UserId}, Email: {Email}, Name: {Name}, Email Verified: {EmailVerified}";
 
     public int CompareTo(User? other)
     {
@@ -30,12 +52,29 @@ public class User : IComparable<User>, IEquatable<User>
         if (ReferenceEquals(this, other))
             return true;
 
-        return UserId == other.UserId && string.Equals(Email, other.Email, StringComparison.OrdinalIgnoreCase);
+        return UserId == other.UserId &&
+               string.Equals(Email, other.Email, StringComparison.OrdinalIgnoreCase);
     }
+
+    public override string ToString() => $"ID: {UserId}, Email: {Email}, Name: {Name}, Email Verified: {EmailVerified}";
 
     public override bool Equals(object? obj)
         => obj is User user && Equals(user);
 
     public override int GetHashCode()
-        => HashCode.Combine(UserId, Email?.ToLowerInvariant());
+        => HashCode.Combine(UserId, Email?.ToUpperInvariant());
+
+    public static bool operator ==(User? left, User? right)
+    {
+        if (ReferenceEquals(left, right))
+            return true;
+
+        if (left is null || right is null)
+            return false;
+
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(User? left, User? right)
+        => !(left == right);
 }

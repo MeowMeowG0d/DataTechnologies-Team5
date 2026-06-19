@@ -1,4 +1,5 @@
 using DataTechnologies.Models;
+using DataTechnologies.Services;
 using Npgsql;
 
 namespace DataTechnologies.Repositories;
@@ -7,39 +8,45 @@ namespace DataTechnologies.Repositories;
 public class UserRepository : IUserRepository
 {
     private readonly string _connectionString;
+    private readonly IFieldCipher _cipher;
 
-    public UserRepository(string connectionString)
+    public UserRepository(string connectionString, IFieldCipher cipher)
     {
         _connectionString = connectionString;
+        _cipher = cipher;
     }
 
     public int Add(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         const string sql = @"
-            INSERT INTO Users (Email, PasswordHash, Name, EmailVerified)
-            VALUES (@Email, @PasswordHash, @Name, @EmailVerified)
+            INSERT INTO Users (Email, PasswordHash, Name, EmailVerified, EmailIndex)
+            VALUES (@Email, @PasswordHash, @Name, @EmailVerified, @EmailIndex)
             RETURNING UserId;";
 
         using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
 
-        cmd.Parameters.AddWithValue("@Email", user.Email);
+        cmd.Parameters.AddWithValue("@Email", _cipher.Encrypt(user.Email));
         cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
-        cmd.Parameters.AddWithValue("@Name", user.Name);
+        cmd.Parameters.AddWithValue("@Name", _cipher.Encrypt(user.Name));
         cmd.Parameters.AddWithValue("@EmailVerified", user.EmailVerified);
+        cmd.Parameters.AddWithValue("@EmailIndex", _cipher.BlindIndex(user.Email));
 
         return (int)cmd.ExecuteScalar()!;
     }
 
     public bool Update(User user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         const string sql = @"
             UPDATE Users
             SET Email           = @Email,
                 PasswordHash    = @PasswordHash,
                 Name            = @Name,
-                EmailVerified   = @EmailVerified
+                EmailVerified   = @EmailVerified,
+                EmailIndex      = @EmailIndex
             WHERE UserId        = @UserId;";
 
         using var conn = new NpgsqlConnection(_connectionString);
@@ -47,10 +54,11 @@ public class UserRepository : IUserRepository
         using var cmd = new NpgsqlCommand(sql, conn);
 
         cmd.Parameters.AddWithValue("@UserId", user.UserId);
-        cmd.Parameters.AddWithValue("@Email", user.Email);
+        cmd.Parameters.AddWithValue("@Email", _cipher.Encrypt(user.Email));
         cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
-        cmd.Parameters.AddWithValue("@Name", user.Name);
+        cmd.Parameters.AddWithValue("@Name", _cipher.Encrypt(user.Name));
         cmd.Parameters.AddWithValue("@EmailVerified", user.EmailVerified);
+        cmd.Parameters.AddWithValue("@EmailIndex", _cipher.BlindIndex(user.Email));
 
         return cmd.ExecuteNonQuery() > 0;
     }
@@ -96,12 +104,12 @@ public class UserRepository : IUserRepository
 
     public User? GetByEmail(string email)
     {
-        const string sql = "SELECT * FROM Users WHERE Email = @Email;";
+        const string sql = "SELECT * FROM Users WHERE EmailIndex = @EmailIndex;";
 
         using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
         using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@Email", email);
+        cmd.Parameters.AddWithValue("@EmailIndex", _cipher.BlindIndex(email));
 
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
@@ -110,7 +118,7 @@ public class UserRepository : IUserRepository
         return null;
     }
 
-    public List<Orders> GetPreviousOrders(int userId)
+    public IReadOnlyCollection<Orders> GetPreviousOrders(int userId)
     {
         const string sql = @"
             SELECT OrderID, OrderNumber, UserID, PaymentMethod, OrderStatus, TotalAmount
@@ -130,7 +138,7 @@ public class UserRepository : IUserRepository
                 OrderID = reader.GetInt32(reader.GetOrdinal("OrderID")),
                 OrderNumber = reader.GetString(reader.GetOrdinal("OrderNumber")),
                 UserID = reader.GetInt32(reader.GetOrdinal("UserID")),
-                PaymentMethod = reader.GetString(reader.GetOrdinal("PaymentMethod")),
+                PaymentMethod = DecryptField(reader, "PaymentMethod"),
                 OrderStatus = reader.GetString(reader.GetOrdinal("OrderStatus")),
                 TotalAmount = reader.GetFloat(reader.GetOrdinal("TotalAmount"))
             });
@@ -138,7 +146,7 @@ public class UserRepository : IUserRepository
         return orders;
     }
 
-    public List<User> GetAll()
+    public IReadOnlyCollection<User> GetAll()
     {
         const string sql = "SELECT * FROM Users;";
 
@@ -154,12 +162,23 @@ public class UserRepository : IUserRepository
         return users;
     }
 
-    private static User Map(NpgsqlDataReader reader) => new()
+    private User Map(NpgsqlDataReader reader) => new()
     {
         UserId = reader.GetInt32(reader.GetOrdinal("UserId")),
-        Email = reader.GetString(reader.GetOrdinal("Email")),
+        Email = _cipher.Decrypt(reader.GetString(reader.GetOrdinal("Email"))),
         PasswordHash = reader.GetString(reader.GetOrdinal("PasswordHash")),
-        Name = reader.GetString(reader.GetOrdinal("Name")),
+        Name = _cipher.Decrypt(reader.GetString(reader.GetOrdinal("Name"))),
         EmailVerified = reader.GetBoolean(reader.GetOrdinal("EmailVerified"))
     };
+
+    private string DecryptField(NpgsqlDataReader reader, string columnName)
+    {
+        int ordinal = reader.GetOrdinal(columnName);
+        if (reader.IsDBNull(ordinal))
+            return string.Empty;
+        string raw = reader.GetString(ordinal);
+        if (string.IsNullOrEmpty(raw))
+            return string.Empty;
+        return _cipher.Decrypt(raw);
+    }
 }
