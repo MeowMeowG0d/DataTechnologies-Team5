@@ -1,15 +1,18 @@
 using Npgsql;
 using DataTechnologies.Models;
+using DataTechnologies.Services;
 
 namespace DataTechnologies.Repositories
 {
     public class OrderRepository
     {
         private readonly string _connectionString;
+        private readonly IFieldCipher _cipher;
 
-        public OrderRepository(string connectionString)
+        public OrderRepository(string connectionString, IFieldCipher cipher)
         {
             _connectionString = connectionString;
+            _cipher = cipher;
         }
 
         public int Add(Orders order)
@@ -26,7 +29,7 @@ namespace DataTechnologies.Repositories
             ArgumentNullException.ThrowIfNull(order);
             cmd.Parameters.AddWithValue("OrderNumber", order.OrderNumber);
             cmd.Parameters.AddWithValue("UserID", order.UserID);
-            cmd.Parameters.AddWithValue("PaymentMethod", order.PaymentMethod);
+            cmd.Parameters.AddWithValue("PaymentMethod", _cipher.Encrypt(order.PaymentMethod));
             cmd.Parameters.AddWithValue("OrderStatus", order.OrderStatus);
             cmd.Parameters.AddWithValue("TotalAmount", order.TotalAmount);
 
@@ -92,12 +95,12 @@ namespace DataTechnologies.Repositories
             return cmd.ExecuteNonQuery() > 0;
         }
 
-        private static Orders MapOrder(NpgsqlDataReader r) => new()
+        private Orders MapOrder(NpgsqlDataReader r) => new()
         {
             OrderID = r.GetInt32(r.GetOrdinal("orderid")),
             OrderNumber = ReadString(r, "ordernumber"),
             UserID = r.GetInt32(r.GetOrdinal("userid")),
-            PaymentMethod = ReadString(r, "paymentmethod"),
+            PaymentMethod = DecryptField(r, "paymentmethod"),
             OrderStatus = ReadString(r, "orderstatus"),
             TotalAmount = r.GetFloat(r.GetOrdinal("totalamount")),
         };
@@ -106,6 +109,17 @@ namespace DataTechnologies.Repositories
         {
             var ordinal = reader.GetOrdinal(columnName);
             return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal);
+        }
+
+        private string DecryptField(NpgsqlDataReader reader, string columnName)
+        {
+            var ordinal = reader.GetOrdinal(columnName);
+            if (reader.IsDBNull(ordinal))
+                return string.Empty;
+            string raw = reader.GetString(ordinal);
+            if (string.IsNullOrEmpty(raw))
+                return string.Empty;
+            return _cipher.Decrypt(raw);
         }
 
         public void AddOrderLines(int orderId, IEnumerable<OrderLine> lines)
