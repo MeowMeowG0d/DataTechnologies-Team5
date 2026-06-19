@@ -279,6 +279,48 @@ async Task MainAsync()
                             payOffShoppingCart,
                             addressService);
                     }
+                    else if (demoOption == MenuOptions.PopularCategories)
+                    {
+                        var demoDatabaseName = await AnsiConsole.AskAsync<string>(
+                            "Enter database name for demo:",
+                            "team5");
+
+                        var services = AppServices.Create(demoDatabaseName);
+
+                        var neo4jUri = Env.GetString("NEO4J_URI");
+                        var neo4jUser = Env.GetString("NEO4J_USER");
+                        var neo4jPassword = Env.GetString("NEO4J_PASSWORD");
+
+                        await using var popularDriver = GraphDatabase.Driver(
+                            new Uri(neo4jUri),
+                            AuthTokens.Basic(neo4jUser, neo4jPassword));
+
+                        try
+                        {
+                            await popularDriver.VerifyConnectivityAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            AnsiConsole.MarkupLine("[red]Could not connect to Neo4j database.[/]");
+                            AnsiConsole.WriteException(ex);
+                            break;
+                        }
+
+                        var repo = new ProductRepository(services.ConnectionString);
+                        var graphRepository = new CategoryGraphRepository(popularDriver);
+                        var categoryAnalyticsService = new CategoryAnalyticsService(graphRepository, repo);
+
+                        try
+                        {
+                            await categoryAnalyticsService.SyncCatalogToGraphAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            AnsiConsole.MarkupLine($"[yellow]Catalogus synchronisatie mislukt: {Markup.Escape(ex.Message)}[/]");
+                        }
+
+                        await CategoryAnalyticsScreen.ShowPopularCategoriesAsync(categoryAnalyticsService);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -315,6 +357,11 @@ async Task MainAsync()
                     {
                         DBConnection.TestMongoConnection();
                         AnsiConsole.MarkupLine("[green]MongoDB connection successful![/]");
+                    }
+                    else if (testOption == MenuOptions.Neo4jDatabase)
+                    {
+                        await DBConnection.TestNeo4jConnectionAsync();
+                        AnsiConsole.MarkupLine("[green]Neo4j connection successful![/]");
                     }
                 }
                 catch (Exception ex)

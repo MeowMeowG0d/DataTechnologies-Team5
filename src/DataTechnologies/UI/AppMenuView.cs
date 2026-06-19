@@ -9,6 +9,7 @@ namespace DataTechnologies.UI
         public const string TestDatabaseConnection = "Test Database Connection";
         public const string PostgreSqlDatabase = "PostgreSQL";
         public const string MongoDbDatabase = "MongoDB";
+        public const string Neo4jDatabase = "Neo4j";
         public const string InitializeDatabaseTables = "Initialize Database Tables";
         public const string InsertTestData = "Insert Test Data";
         public const string BackupDatabases = "Backup databases";
@@ -16,6 +17,7 @@ namespace DataTechnologies.UI
 
         public const string ShowAvailableProducts = "Show available products";
         public const string Account = "Account";
+        public const string PopularCategories = "Populaire categorieën";
 
         public const string RegisterUser = "Register user";
         public const string UpdateUser = "Update user";
@@ -66,6 +68,7 @@ namespace DataTechnologies.UI
         public static IReadOnlyList<string> DemoMenuOptions { get; } = new[]
         {
             ShowAvailableProducts,
+            PopularCategories,
             Account,
             Back
         };
@@ -88,6 +91,7 @@ namespace DataTechnologies.UI
         {
             PostgreSqlDatabase,
             MongoDbDatabase,
+            Neo4jDatabase,
             Back
         };
     }

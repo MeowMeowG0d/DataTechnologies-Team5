@@ -1,31 +1,127 @@
-using Xunit;
+using System.Linq;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using DataTechnologies.Models;
+using Xunit;
 
-namespace ProductTests
+public class ProductModelTests
 {
-    public class ProductModelTests
+    [Fact]
+    public void Product_ValidModel_PassesValidation()
     {
-        [Fact]
-        public void Product_CanBeConstructedAndPropertiesSet()
+        var product = new Product
         {
-            var p = new Product
-            {
-                ProductID = 10,
-                Name = "Test",
-                Brand = "B",
-                Description = "D",
-                Price = 1.23f,
-                Stock = 7,
-                Specification = "S"
-            };
+            ProductID = 1,
+            Name = "Laptop",
+            Brand = "Dell",
+            Description = "Business laptop",
+            Price = 999.99f,
+            Stock = 5,
+            Specification = "16GB RAM"
+        };
 
-            Assert.Equal(10, p.ProductID);
-            Assert.Equal("Test", p.Name);
-            Assert.Equal("B", p.Brand);
-            Assert.Equal("D", p.Description);
-            Assert.Equal(1.23f, p.Price);
-            Assert.Equal(7, p.Stock);
-            Assert.Equal("S", p.Specification);
-        }
+        var results = ValidationHelper.ValidateModel(product);
+
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public void Product_MissingName_FailsValidation()
+    {
+        var product = new Product
+        {
+            Brand = "Dell",
+            Price = 999.99f,
+            Stock = 5
+        };
+
+        var results = ValidationHelper.ValidateModel(product);
+
+        Assert.Contains(results, r =>
+            r.MemberNames.Contains(nameof(Product.Name)));
+    }
+
+    [Fact]
+    public void Product_MissingBrand_FailsValidation()
+    {
+        var product = new Product
+        {
+            Name = "Laptop",
+            Price = 999.99f,
+            Stock = 5
+        };
+
+        var results = ValidationHelper.ValidateModel(product);
+
+        Assert.Contains(results, r =>
+            r.MemberNames.Contains(nameof(Product.Brand)));
+    }
+
+    [Fact]
+    public void Product_NegativePrice_FailsValidation()
+    {
+        var product = new Product
+        {
+            Name = "Laptop",
+            Brand = "Dell",
+            Price = -1,
+            Stock = 5
+        };
+
+        var results = ValidationHelper.ValidateModel(product);
+
+        Assert.Contains(results, r =>
+            r.MemberNames.Contains(nameof(Product.Price)));
+    }
+
+    [Fact]
+    public void Product_NegativeStock_FailsValidation()
+    {
+        var product = new Product
+        {
+            Name = "Laptop",
+            Brand = "Dell",
+            Price = 100,
+            Stock = -5
+        };
+
+        var results = ValidationHelper.ValidateModel(product);
+
+        Assert.Contains(results, r =>
+            r.MemberNames.Contains(nameof(Product.Stock)));
+    }
+
+    [Fact]
+    public void Product_NameTooLong_FailsValidation()
+    {
+        var product = new Product
+        {
+            Name = new string('A', 200), // > 100 chars
+            Brand = "Dell",
+            Price = 100,
+            Stock = 1
+        };
+
+        var results = ValidationHelper.ValidateModel(product);
+
+        Assert.Contains(results, r =>
+            r.MemberNames.Contains(nameof(Product.Name)));
+    }
+}
+
+public static class ValidationHelper
+{
+    public static IList<ValidationResult> ValidateModel(Product model)
+    {
+        var context = new ValidationContext(model);
+        var results = new List<ValidationResult>();
+
+        Validator.TryValidateObject(
+            model,
+            context,
+            results,
+            validateAllProperties: true);
+
+        return results;
     }
 }

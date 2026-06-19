@@ -1,3 +1,4 @@
+using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using Spectre.Console;
@@ -7,7 +8,6 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Mail;
 using System.Net.Sockets;
-using DataTechnologies.Models;
 
 namespace DataTechnologies.UI
 {
