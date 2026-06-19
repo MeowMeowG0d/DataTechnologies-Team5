@@ -8,6 +8,24 @@ using DataTechnologies.Services;
 using DataTechnologies.UI;
 using Neo4j.Driver;
 
+if (args.Length > 0 && args[0] == "migrate-encrypt")
+{
+    Env.Load();
+    string migrationDb = "team5";
+    if (args.Length > 1)
+        migrationDb = args[1];
+
+    var migrationServices = AppServices.Create(migrationDb);
+    var migrationResult = DataMigrationRepository.EncryptExistingData(migrationServices.ConnectionString, migrationServices.Cipher);
+    AnsiConsole.MarkupLine($"[green]Migratie klaar voor '{migrationDb}': {migrationResult.Users} users, {migrationResult.Addresses} adressen, {migrationResult.Orders} orders versleuteld.[/]");
+
+    AnsiConsole.MarkupLine("[grey]Controle (gelezen via de app, dus ontsleuteld):[/]");
+    foreach (var migratedUser in migrationServices.UserService.GetAllUsers())
+        AnsiConsole.MarkupLine($"  #{migratedUser.UserId} {Markup.Escape(migratedUser.Name)} — {Markup.Escape(migratedUser.Email)}");
+
+    return;
+}
+
 await MainAsync();
 
 async Task MainAsync()
