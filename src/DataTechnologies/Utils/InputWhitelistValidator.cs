@@ -5,25 +5,22 @@ namespace DataTechnologies.Utils;
 public static class InputWhitelistValidator
 {
     private const int MaxEmailLength = 254;
-    private const int MaxNameLength = 100;
-
-    private static readonly Regex AttackSignatureRegex = new(
-        @"(--|/\*|\*/|;|<|>|`|'\s*(?:--|/\*|;|\b(or|and|union|drop|exec(?:ute)?)\b)|\b(or|and)\b\s+\d+\s*=\s*\d+\b|\bunion\b\s+\bselect\b|\bdrop\b\s+\btable\b|\bexec(?:ute)?\b\s+\w+)",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase
-    );
+    private const int MaxNameLength = 35;
 
     private static readonly Regex EmailWhitelistRegex = new(
-        @"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$",
+        @"\A[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\z",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
     );
 
+    private const string NameLetterClass = "A-Za-zÀ-ÖØ-öø-ſ";
+
     private static readonly Regex NameWhitelistRegex = new(
-        @"^[A-Za-z][A-Za-z '\-]{1,99}$",
+        $@"\A[{NameLetterClass}]+(?:['\-][{NameLetterClass}]+)*(?: [{NameLetterClass}]+(?:['\-][{NameLetterClass}]+)*)*\z",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
     );
 
     private static readonly Regex PasswordWhitelistRegex = new(
-        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])\S{8,64}$",
+        @"\A(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])\S{8,64}\z",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
     );
 
@@ -44,9 +41,6 @@ public static class InputWhitelistValidator
             return false;
 
         if (!TryNormalize(input, out var normalized, MaxNameLength))
-            return false;
-
-        if (ContainsAttackSignature(normalized))
             return false;
 
         return NameWhitelistRegex.IsMatch(normalized);
@@ -102,7 +96,4 @@ public static class InputWhitelistValidator
 
     private static bool ContainsControlCharacters(string input)
         => input.Any(char.IsControl);
-
-    private static bool ContainsAttackSignature(string input)
-        => AttackSignatureRegex.IsMatch(input);
 }

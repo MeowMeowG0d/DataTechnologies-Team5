@@ -29,16 +29,66 @@ public class InputWhitelistValidatorTests
     [Theory]
     [InlineData("Robert'); DROP TABLE Users;--")]
     [InlineData("Alice <script>")]
-    [InlineData("UNION SELECT")]
-    public void IsValidName_AttackPattern_ReturnsFalse(string input)
+    public void IsValidName_DisallowedCharacters_ReturnsFalse(string input)
     {
         Assert.False(InputWhitelistValidator.IsValidName(input));
+    }
+
+    [Fact]
+    public void IsValidName_KeywordOnlyName_ReturnsTrue()
+    {
+        Assert.True(InputWhitelistValidator.IsValidName("UNION SELECT"));
     }
 
     [Fact]
     public void IsValidName_NormalName_ReturnsTrue()
     {
         Assert.True(InputWhitelistValidator.IsValidName("O'Connor"));
+    }
+
+    [Fact]
+    public void IsValidName_NameWithHyphen_ReturnsTrue()
+    {
+        Assert.True(InputWhitelistValidator.IsValidName("Jean-Luc"));
+    }
+
+    [Theory]
+    [InlineData("Renée")]
+    [InlineData("François")]
+    [InlineData("Müller")]
+    public void IsValidName_AccentedLetters_ReturnsTrue(string input)
+    {
+        Assert.True(InputWhitelistValidator.IsValidName(input));
+    }
+
+    [Fact]
+    public void IsValidName_SingleLetter_ReturnsTrue()
+    {
+        Assert.True(InputWhitelistValidator.IsValidName("A"));
+    }
+
+    [Theory]
+    [InlineData("Robert'--")]
+    [InlineData("O''Brien")]
+    [InlineData("Robert--Smith")]
+    [InlineData("a' or 'a'='a")]
+    public void IsValidName_PunctuationNotFollowedByLetter_ReturnsFalse(string input)
+    {
+        Assert.False(InputWhitelistValidator.IsValidName(input));
+    }
+
+    [Fact]
+    public void IsValidName_OverMaxLength_ReturnsFalse()
+    {
+        var input = new string('a', 36);
+        Assert.False(InputWhitelistValidator.IsValidName(input));
+    }
+
+    [Fact]
+    public void IsValidName_AtMaxLength_ReturnsTrue()
+    {
+        var input = new string('a', 35);
+        Assert.True(InputWhitelistValidator.IsValidName(input));
     }
 
     [Theory]
