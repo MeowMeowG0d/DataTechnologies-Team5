@@ -12,11 +12,10 @@ namespace DataTechnologies.Data
 
         public DBConnection(string database = "team5")
         {
-            // You can also put this in appsettings.json, but for learning purposes we'll hardcode it here based on your request
-            string host = "145.24.237.123";
-            string port = "8432";
-            string username = "team5";
-            string password = "pRnj7a4Gh";
+            var host = Environment.GetEnvironmentVariable("POSTGRESQL_HOST");
+            var port = Environment.GetEnvironmentVariable("POSTGRESQL_PORT");
+            var username = Environment.GetEnvironmentVariable("POSTGRESQL_USERNAME");;
+            var password = Environment.GetEnvironmentVariable("POSTGRESQL_PASSWORD");;
 
             _connectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database};";
         }
@@ -30,7 +29,6 @@ namespace DataTechnologies.Data
 
         public static void CreateDatabaseIfNotExists(string targetDatabase)
         {
-            // Connect to a default database to check/create the target database. We assume 'team5' exists as a default.
             var defaultDbConnection = new DBConnection("team5");
             using var connection = defaultDbConnection.GetConnection();
             connection.Open();
