@@ -20,7 +20,7 @@ namespace UserTests
         }
 
         private static User CreateUser(int id = 0, string email = "test@example.com",
-            string password = "Password123", string name = "Test User") => new()
+            string password = "Password123!", string name = "Test User") => new()
         {
             UserId = id,
             Email = email,
@@ -104,7 +104,7 @@ namespace UserTests
         {
             _repo.Setup(r => r.GetByEmail(It.IsAny<string>())).Returns((User?)null);
             _repo.Setup(r => r.Add(It.IsAny<User>())).Returns(42);
-            _hasher.Setup(h => h.HashPassword("Password123")).Returns("hashed-value");
+            _hasher.Setup(h => h.HashPassword("Password123!")).Returns("hashed-value");
 
             var user = CreateUser();
             var newId = _service.AddUser(user);
@@ -188,9 +188,9 @@ namespace UserTests
             _repo.Setup(r => r.GetById(1)).Returns(existing);
             _repo.Setup(r => r.GetByEmail("test@example.com")).Returns(existing);
             _repo.Setup(r => r.Update(It.IsAny<User>())).Returns(true);
-            _hasher.Setup(h => h.HashPassword("NewPassword123")).Returns("new-hash");
+            _hasher.Setup(h => h.HashPassword("NewPassword123!")).Returns("new-hash");
 
-            var update = CreateUser(id: 1, password: "NewPassword123");
+            var update = CreateUser(id: 1, password: "NewPassword123!");
             Assert.True(_service.UpdateUser(update));
 
             Assert.Equal("new-hash", update.PasswordHash);
@@ -210,7 +210,7 @@ namespace UserTests
             var update = CreateUser(id: 1, password: newPassword);
 
             var ex = Assert.Throws<ArgumentException>(() => _service.UpdateUser(update));
-            Assert.Contains("include at least one uppercase letter", ex.Message);
+            Assert.Contains("one special character", ex.Message);
             _hasher.Verify(h => h.HashPassword(It.IsAny<string>()), Times.Never);
         }
 
@@ -227,7 +227,7 @@ namespace UserTests
         {
             _repo.Setup(r => r.GetByEmail("unknown@example.com")).Returns((User?)null);
 
-            Assert.False(_service.Authenticate("unknown@example.com", "Password123"));
+            Assert.False(_service.Authenticate("unknown@example.com", "Password123!"));
         }
 
         [Fact]

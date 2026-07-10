@@ -15,7 +15,7 @@ public static class InputWhitelistValidator
     );
 
     private static readonly Regex PasswordWhitelistRegex = new(
-        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)\S{8,64}$",
+        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])\S{8,64}$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
     );
 

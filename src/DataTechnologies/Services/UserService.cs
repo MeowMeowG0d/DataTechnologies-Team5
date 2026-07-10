@@ -8,7 +8,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 {
     private const string InvalidEmailError = "Email format is invalid.";
     private const string InvalidNameError = "Name format is invalid.";
-    private const string PasswordSyntaxError = "Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter and one digit, without spaces.";
+    private const string PasswordSyntaxError = "Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one digit and one special character, without spaces.";
 
     private static void ValidateEmail(string email)
     {
