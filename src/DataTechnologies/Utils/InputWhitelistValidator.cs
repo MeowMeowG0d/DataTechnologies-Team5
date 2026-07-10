@@ -4,6 +4,11 @@ namespace DataTechnologies.Utils;
 
 public static class InputWhitelistValidator
 {
+    private static readonly Regex AttackSignatureRegex = new(
+        @"(--|/\*|\*/|;|<|>|`|\b(or|and)\b\s+\d+\s*=\s*\d+\b|\bunion\b\s+\bselect\b|\bdrop\b\s+\btable\b|\bexec(?:ute)?\b\s+\w+)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase
+    );
+
     private static readonly Regex EmailWhitelistRegex = new(
         @"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
@@ -20,22 +25,81 @@ public static class InputWhitelistValidator
     );
 
     public static bool IsValidEmail(string? input)
-        => MatchesWhitelist(input, EmailWhitelistRegex);
-
-    public static bool IsValidName(string? input)
-        => MatchesWhitelist(input, NameWhitelistRegex);
-
-    public static bool IsValidPassword(string? input)
-        => MatchesWhitelist(input, PasswordWhitelistRegex);
-
-    private static bool MatchesWhitelist(string? input, Regex whitelistRegex)
     {
-        if (string.IsNullOrWhiteSpace(input))
+        if (input is null)
             return false;
 
-        if (whitelistRegex.IsMatch(input))
+        if (!TryNormalize(input, out var normalized))
+            return false;
+
+        if (ContainsAttackSignature(normalized))
+            return false;
+
+        return EmailWhitelistRegex.IsMatch(normalized);
+    }
+
+    public static bool IsValidName(string? input)
+    {
+        if (input is null)
+            return false;
+
+        if (!TryNormalize(input, out var normalized))
+            return false;
+
+        if (ContainsAttackSignature(normalized))
+            return false;
+
+        return NameWhitelistRegex.IsMatch(normalized);
+    }
+
+    public static bool IsValidPassword(string? input)
+    {
+        if (input is null)
+            return false;
+
+        if (IsMissingInput(input))
+            return false;
+
+        var candidate = input;
+
+        if (ContainsControlCharacters(candidate))
+            return false;
+
+        return PasswordWhitelistRegex.IsMatch(candidate);
+    }
+
+    private static bool TryNormalize(string? input, out string normalized)
+    {
+        normalized = string.Empty;
+
+        if (IsMissingInput(input))
+            return false;
+
+        normalized = input!.Trim();
+
+        if (ContainsControlCharacters(normalized))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsMissingInput(string? input)
+    {
+        if (input is null)
+            return true;
+
+        if (input.Length == 0)
+            return true;
+
+        if (string.IsNullOrWhiteSpace(input))
             return true;
 
         return false;
     }
+
+    private static bool ContainsControlCharacters(string input)
+        => input.Any(char.IsControl);
+
+    private static bool ContainsAttackSignature(string input)
+        => AttackSignatureRegex.IsMatch(input);
 }
