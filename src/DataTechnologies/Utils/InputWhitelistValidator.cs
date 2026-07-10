@@ -4,8 +4,11 @@ namespace DataTechnologies.Utils;
 
 public static class InputWhitelistValidator
 {
+    private const int MaxEmailLength = 254;
+    private const int MaxNameLength = 100;
+
     private static readonly Regex AttackSignatureRegex = new(
-        @"(--|/\*|\*/|;|<|>|`|\b(or|and)\b\s+\d+\s*=\s*\d+\b|\bunion\b\s+\bselect\b|\bdrop\b\s+\btable\b|\bexec(?:ute)?\b\s+\w+)",
+        @"(--|/\*|\*/|;|<|>|`|'\s*(?:--|/\*|;|\b(or|and|union|drop|exec(?:ute)?)\b)|\b(or|and)\b\s+\d+\s*=\s*\d+\b|\bunion\b\s+\bselect\b|\bdrop\b\s+\btable\b|\bexec(?:ute)?\b\s+\w+)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase
     );
 
@@ -29,10 +32,7 @@ public static class InputWhitelistValidator
         if (input is null)
             return false;
 
-        if (!TryNormalize(input, out var normalized))
-            return false;
-
-        if (ContainsAttackSignature(normalized))
+        if (!TryNormalize(input, out var normalized, MaxEmailLength))
             return false;
 
         return EmailWhitelistRegex.IsMatch(normalized);
@@ -43,7 +43,7 @@ public static class InputWhitelistValidator
         if (input is null)
             return false;
 
-        if (!TryNormalize(input, out var normalized))
+        if (!TryNormalize(input, out var normalized, MaxNameLength))
             return false;
 
         if (ContainsAttackSignature(normalized))
@@ -68,7 +68,7 @@ public static class InputWhitelistValidator
         return PasswordWhitelistRegex.IsMatch(candidate);
     }
 
-    private static bool TryNormalize(string? input, out string normalized)
+    private static bool TryNormalize(string? input, out string normalized, int maxLength)
     {
         normalized = string.Empty;
 
@@ -76,6 +76,9 @@ public static class InputWhitelistValidator
             return false;
 
         normalized = input!.Trim();
+
+        if (normalized.Length > maxLength)
+            return false;
 
         if (ContainsControlCharacters(normalized))
             return false;
