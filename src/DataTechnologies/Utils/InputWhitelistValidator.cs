@@ -33,6 +33,9 @@ public static class InputWhitelistValidator
         if (string.IsNullOrWhiteSpace(input))
             return false;
 
-        return whitelistRegex.IsMatch(input);
+        if (whitelistRegex.IsMatch(input))
+            return true;
+
+        return false;
     }
 }
