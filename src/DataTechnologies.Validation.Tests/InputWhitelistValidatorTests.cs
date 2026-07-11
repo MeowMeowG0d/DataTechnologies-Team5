@@ -27,6 +27,15 @@ public class InputWhitelistValidatorTests
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void IsValidName_MissingInput_ReturnsFalse(string? input)
+    {
+        Assert.False(InputWhitelistValidator.IsValidName(input));
+    }
+
+    [Theory]
     [InlineData("Robert'); DROP TABLE Users;--")]
     [InlineData("Alice <script>")]
     public void IsValidName_DisallowedCharacters_ReturnsFalse(string input)
@@ -50,6 +59,18 @@ public class InputWhitelistValidatorTests
     public void IsValidName_NameWithHyphen_ReturnsTrue()
     {
         Assert.True(InputWhitelistValidator.IsValidName("Jean-Luc"));
+    }
+
+    [Fact]
+    public void IsValidName_NameWithSpace_ReturnsTrue()
+    {
+        Assert.True(InputWhitelistValidator.IsValidName("Hans Koeman"));
+    }
+
+    [Fact]
+    public void IsValidName_TrimmedNameWithSpace_ReturnsTrue()
+    {
+        Assert.True(InputWhitelistValidator.IsValidName("  Hans Koeman  "));
     }
 
     [Theory]

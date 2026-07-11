@@ -29,6 +29,9 @@ public static class InputWhitelistValidator
         if (input is null)
             return false;
 
+        if (IsMissingInput(input))
+            return false;
+
         if (!TryNormalize(input, out var normalized, MaxEmailLength))
             return false;
 
@@ -38,6 +41,9 @@ public static class InputWhitelistValidator
     public static bool IsValidName(string? input)
     {
         if (input is null)
+            return false;
+
+        if (IsMissingInput(input))
             return false;
 
         if (!TryNormalize(input, out var normalized, MaxNameLength))
