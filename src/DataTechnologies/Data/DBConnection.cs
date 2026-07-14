@@ -1,8 +1,10 @@
 using System.Data;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Events;
 using Npgsql;
 using Neo4j.Driver;
+using DataTechnologies.Utils;
 
 namespace DataTechnologies.Data
 {
@@ -53,7 +55,26 @@ namespace DataTechnologies.Data
                 ? "team5"
                 : mongoUrl.DatabaseName;
 
-            var mongoClient = new MongoClient(mongoConnectionString);
+            var settings = MongoClientSettings.FromConnectionString(mongoConnectionString);
+            settings.ClusterConfigurator = cb =>
+            {
+                cb.Subscribe<CommandStartedEvent>(e =>
+                {
+                    string collectionName = "Unknown";
+                    if (e.Command.Contains("collection") && e.Command["collection"].IsString)
+                    {
+                        collectionName = e.Command["collection"].AsString;
+                    }
+                    else if (e.Command.Contains(e.CommandName) && e.Command[e.CommandName].IsString)
+                    {
+                        collectionName = e.Command[e.CommandName].AsString;
+                    }
+
+                    MemoryLoggerProvider.AddLog("MongoDB", "Debug", "MongoDB.Driver", $"Operation: {e.CommandName} | Database: {e.DatabaseNamespace.DatabaseName} | Collection: {collectionName}");
+                });
+            };
+
+            var mongoClient = new MongoClient(settings);
             return mongoClient.GetDatabase(resolvedDatabaseName);
         }
 
@@ -82,7 +103,7 @@ namespace DataTechnologies.Data
             if (string.IsNullOrWhiteSpace(uri) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
                 throw new InvalidOperationException("NEO4J_URI, NEO4J_USER or NEO4J_PASSWORD was not found. Ensure .env is present or set the environment variables.");
 
-            await using var driver = GraphDatabase.Driver(new Uri(uri), AuthTokens.Basic(user, password));
+            await using var driver = GraphDatabase.Driver(new Uri(uri), AuthTokens.Basic(user, password), o => o.WithLogger(new PrivacyNeo4jLogger()));
             await driver.VerifyConnectivityAsync();
         }
     }
