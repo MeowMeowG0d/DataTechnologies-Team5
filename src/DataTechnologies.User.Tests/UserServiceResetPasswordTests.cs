@@ -29,10 +29,10 @@ namespace UserTests
             var hasher = new PasswordHasher();
             var service = new UserService(mockRepo.Object, hasher);
 
-            var result = service.ResetPassword(user.Email, "newSecret123");
+            var result = service.ResetPassword(user.Email, "newSecret123!");
 
             Assert.True(result);
-            Assert.True(hasher.VerifyPassword("newSecret123", user.PasswordHash));
+            Assert.True(hasher.VerifyPassword("newSecret123!", user.PasswordHash));
             mockRepo.Verify(r => r.Update(It.Is<User>(u => u.UserId == user.UserId)), Times.Once);
         }
 
@@ -46,9 +46,9 @@ namespace UserTests
 
             var service = new UserService(mockRepo.Object, new PasswordHasher());
 
-            service.ResetPassword(user.Email, "newSecret123");
+            service.ResetPassword(user.Email, "newSecret123!");
 
-            Assert.True(service.Authenticate(user.Email, "newSecret123"));
+            Assert.True(service.Authenticate(user.Email, "newSecret123!"));
             Assert.False(service.Authenticate(user.Email, "wrongPassword"));
         }
 
@@ -61,7 +61,7 @@ namespace UserTests
             var service = new UserService(mockRepo.Object, new PasswordHasher());
 
             Assert.Throws<InvalidOperationException>(
-                () => service.ResetPassword("unknown@example.com", "newSecret123"));
+                () => service.ResetPassword("unknown@example.com", "newSecret123!"));
         }
 
         [Theory]
@@ -72,7 +72,7 @@ namespace UserTests
             var mockRepo = new Mock<IUserRepository>();
             var service = new UserService(mockRepo.Object, new PasswordHasher());
 
-            var ex = Assert.Throws<ArgumentException>(() => service.ResetPassword(email, "newSecret123"));
+            var ex = Assert.Throws<ArgumentException>(() => service.ResetPassword(email, "newSecret123!"));
             Assert.Contains("Email format is invalid", ex.Message);
         }
 
