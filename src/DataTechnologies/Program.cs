@@ -1,12 +1,22 @@
-using Spectre.Console;
-using DotNetEnv;
 using DataTechnologies;
 using DataTechnologies.Data;
 using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.UI;
+using DotNetEnv;
+using Microsoft.Extensions.Logging;
 using Neo4j.Driver;
+using Npgsql;
+using Spectre.Console;
+using DataTechnologies.Utils;
+
+using var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder.AddProvider(new DataTechnologies.Utils.MemoryLoggerProvider());
+    builder.SetMinimumLevel(LogLevel.Debug);
+});
+NpgsqlLoggingConfiguration.InitializeLogging(loggerFactory, parameterLoggingEnabled: false);
 
 if (args.Length > 0 && args[0] == "migrate-encrypt")
 {
@@ -192,7 +202,8 @@ async Task MainAsync()
 
                         await using var driver = GraphDatabase.Driver(
                             new Uri(neo4jUri),
-                            AuthTokens.Basic(neo4jUser, neo4jPassword));
+                            AuthTokens.Basic(neo4jUser, neo4jPassword),
+                            o => o.WithLogger(new PrivacyNeo4jLogger()));
 
                         try
                         {
@@ -293,7 +304,8 @@ async Task MainAsync()
 
                         await using var popularDriver = GraphDatabase.Driver(
                             new Uri(neo4jUri),
-                            AuthTokens.Basic(neo4jUser, neo4jPassword));
+                            AuthTokens.Basic(neo4jUser, neo4jPassword),
+                            o => o.WithLogger(new PrivacyNeo4jLogger()));
 
                         try
                         {
