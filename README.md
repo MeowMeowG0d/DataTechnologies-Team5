@@ -17,8 +17,6 @@ Console-applicatie (.NET 8) voor het beheren van gebruikers, producten, bestelli
    ```
 2. Plaats het `.env`-bestand in `src/DataTechnologies/.env`.
 
-   Dit bestand wordt **niet** in de repository meegeleverd en staat ook niet in `.env.template` met echte waarden — je krijgt het apart aangeleverd (bijv. via je teamlead of een gedeelde, beveiligde plek). Zet er nooit echte waarden van in de repo of in dit README.
-
    Het bestand bevat de volgende variabelen:
 
    | Variabele | Omschrijving |
@@ -34,8 +32,9 @@ Console-applicatie (.NET 8) voor het beheren van gebruikers, producten, bestelli
    | `POSTGRESQL_PORT` | Poort waarop PostgreSQL luistert. |
    | `POSTGRESQL_USERNAME` | Gebruikersnaam voor PostgreSQL. |
    | `POSTGRESQL_PASSWORD` | Wachtwoord voor PostgreSQL. |
+   | `PAPERTRAIL` | Bearer token voor Papertrail logging dashboard. |
    
-3. Herstel de dependencies:
+4. Herstel de dependencies:
    ```bash
    dotnet restore
    ```
@@ -50,6 +49,17 @@ Bij de eerste keer draaien:
 1. Kies **Initialize Database Tables** om het schema aan te maken.
 2. Kies optioneel **Insert Test Data** om voorbeeldgebruikers, producten en bestellingen te seeden.
 3. Log in of registreer een nieuwe gebruiker via het hoofdmenu.
+
+## Logs bekijken (Papertrail)
+
+De applicatie stuurt real-time logs door naar Papertrail via de token die is geconfigureerd in de `.env`-bestand.
+Volg de onderstaande stappen om dit op te zetten en de logs live te bekijken:
+
+1. Log in op je **Papertrail-account** en klik in het menu op **Destinations**.
+2. Klik op **Create Destination** en daarna op **Create**.
+3. Selecteer in het nieuwe menu de optie **HTTPS**.
+4. Kopieer de gegenereerde token en plak deze in je `.env`-bestand achter `PAPERTRAIL`.
+5. Start de applicatie. Wanneer het programma draait, komen de logs binnen onder het menu **Logs** (het kan een paar seconden duren voordat deze updaten).
 
 ## Tests uitvoeren
 
