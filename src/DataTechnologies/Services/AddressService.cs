@@ -2,6 +2,7 @@ using DataTechnologies.Data;
 using DataTechnologies.Repositories;
 using DataTechnologies.Models;
 using DataTechnologies.Utils;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 namespace DataTechnologies.Services;
 
@@ -15,21 +16,17 @@ public class AddressService
         _addressRepository = new AddressRepository(dbConnection, cipher);
     }
 
-    private static void ValidateField(string? value, Func<string?, bool> isValid, string emptyMessage, string invalidMessage)
+    private static void ValidateField([NotNull] string? value, Func<string?, bool> isValid, string emptyMessage, string invalidMessage)
     {
-        if (!isValid(value))
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentException(emptyMessage);
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException(emptyMessage);
 
+        if (!isValid(value))
             throw new ArgumentException(invalidMessage);
-        }
     }
 
     public int SaveAddress(int userId, string street, string number, string postcode, string city, string country, string? type)
     {
-        ArgumentNullException.ThrowIfNull(postcode);
-
         ValidateField(street, InputWhitelistValidator.IsValidAddressLine, "Straat is verplicht.", "Straat bevat ongeldige tekens.");
         ValidateField(number, InputWhitelistValidator.IsValidHouseNumber, "Huisnummer is verplicht.", "Huisnummer is ongeldig.");
         ValidateField(postcode, InputWhitelistValidator.IsValidPostcode, "Postcode is verplicht.", "Postcode is ongeldig.");
