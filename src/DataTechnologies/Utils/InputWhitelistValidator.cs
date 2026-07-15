@@ -42,7 +42,7 @@ public static class InputWhitelistValidator
     );
 
     private static readonly Regex HouseNumberWhitelistRegex = new(
-        @"\A\d+[A-Za-z0-9\-\s]*\z",
+        @"\A\d+[A-Za-z0-9]*(?:[ \-][A-Za-z0-9]+)*\z",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
     );
 
@@ -52,7 +52,7 @@ public static class InputWhitelistValidator
     );
 
     private static readonly Regex PlaceNameWhitelistRegex = new(
-        $@"\A['{NameLetterClass}]+(?:[ \-]['{NameLetterClass}]+)*\z",
+        $@"\A'?[{NameLetterClass}]+(?:[ \-'][{NameLetterClass}]+)*\z",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
     );
 

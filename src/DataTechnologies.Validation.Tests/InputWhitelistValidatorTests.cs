@@ -235,6 +235,8 @@ public class InputWhitelistValidatorTests
     [Theory]
     [InlineData("A12")]
     [InlineData("[red]12[/]")]
+    [InlineData("12-")]
+    [InlineData("12--14")]
     public void IsValidHouseNumber_DisallowedFormat_ReturnsFalse(string input)
     {
         Assert.False(InputWhitelistValidator.IsValidHouseNumber(input));
@@ -288,6 +290,8 @@ public class InputWhitelistValidatorTests
     [Theory]
     [InlineData("Rotterdam1")]
     [InlineData("[red]Rotterdam[/]")]
+    [InlineData("'''")]
+    [InlineData("Rotterdam'")]
     public void IsValidCity_DisallowedCharacters_ReturnsFalse(string input)
     {
         Assert.False(InputWhitelistValidator.IsValidCity(input));
