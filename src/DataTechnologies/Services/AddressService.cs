@@ -1,6 +1,7 @@
 using DataTechnologies.Data;
 using DataTechnologies.Repositories;
 using DataTechnologies.Models;
+using DataTechnologies.Utils;
 using System.Globalization;
 namespace DataTechnologies.Services;
 
@@ -14,13 +15,27 @@ public class AddressService
         _addressRepository = new AddressRepository(dbConnection, cipher);
     }
 
+    private static void ValidateField(string? value, Func<string?, bool> isValid, string emptyMessage, string invalidMessage)
+    {
+        if (!isValid(value))
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException(emptyMessage);
+
+            throw new ArgumentException(invalidMessage);
+        }
+    }
+
     public int SaveAddress(int userId, string street, string number, string postcode, string city, string country, string? type)
     {
-        if (string.IsNullOrWhiteSpace(street))   throw new ArgumentException("Straat is verplicht.");
-        if (string.IsNullOrWhiteSpace(number))   throw new ArgumentException("Huisnummer is verplicht.");
-        if (string.IsNullOrWhiteSpace(postcode)) throw new ArgumentException("Postcode is verplicht.");
-        if (string.IsNullOrWhiteSpace(city))     throw new ArgumentException("Stad is verplicht.");
-        if (string.IsNullOrWhiteSpace(country))  throw new ArgumentException("Land is verplicht.");
+        ArgumentNullException.ThrowIfNull(postcode);
+
+        ValidateField(street, InputWhitelistValidator.IsValidAddressLine, "Straat is verplicht.", "Straat bevat ongeldige tekens.");
+        ValidateField(number, InputWhitelistValidator.IsValidHouseNumber, "Huisnummer is verplicht.", "Huisnummer is ongeldig.");
+        ValidateField(postcode, InputWhitelistValidator.IsValidPostcode, "Postcode is verplicht.", "Postcode is ongeldig.");
+        ValidateField(city, InputWhitelistValidator.IsValidCity, "Stad is verplicht.", "Stad bevat ongeldige tekens.");
+        ValidateField(country, InputWhitelistValidator.IsValidCountry, "Land is verplicht.", "Land bevat ongeldige tekens.");
+        ValidateField(type, InputWhitelistValidator.IsValidAddressLine, "Toevoeging is verplicht.", "Toevoeging bevat ongeldige tekens.");
 
         var address = new Addresses
         {
