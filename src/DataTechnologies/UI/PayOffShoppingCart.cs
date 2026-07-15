@@ -195,9 +195,18 @@ public class PayOffShoppingCart
                 new TextPrompt<string>("Vervaldatum (MM/JJ):")
                     .Validate(value =>
                     {
-                        if (System.Text.RegularExpressions.Regex.IsMatch(value, @"^(0[1-9]|1[0-2])\/\d{2}$"))
-                            return ValidationResult.Success();
-                        return ValidationResult.Error("[red]Gebruik het formaat MM/JJ.[/]");
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^(0[1-9]|1[0-2])\/\d{2}$"))
+                            return ValidationResult.Error("[red]Gebruik het formaat MM/JJ.[/]");
+
+                        var parts = value.Split('/');
+                        int month = int.Parse(parts[0], CultureInfo.InvariantCulture);
+                        int year = 2000 + int.Parse(parts[1], CultureInfo.InvariantCulture);
+                        var lastValidDay = new DateOnly(year, month, 1).AddMonths(1).AddDays(-1);
+
+                        if (lastValidDay < DateOnly.FromDateTime(DateTime.UtcNow))
+                            return ValidationResult.Error("[red]Deze kaart is verlopen.[/]");
+
+                        return ValidationResult.Success();
                     }));
 
             // CVV wordt wel gevraagd maar bewust NOOIT opgeslagen (PCI-DSS).
