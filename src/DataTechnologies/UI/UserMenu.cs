@@ -147,7 +147,11 @@ public static class UserMenu
                 var newUserId = userService.AddUser(user);
                 AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
             }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            catch (ArgumentException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Registration failed: {ex.Message}[/]");
+            }
+            catch (InvalidOperationException ex)
             {
                 AnsiConsole.MarkupLine($"[red]Registration failed: {ex.Message}[/]");
             }
@@ -235,7 +239,11 @@ public static class UserMenu
                 else
                     AnsiConsole.MarkupLine("[red]Failed to update user.[/]");
             }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            catch (ArgumentException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Update failed: {ex.Message}[/]");
+            }
+            catch (InvalidOperationException ex)
             {
                 AnsiConsole.MarkupLine($"[red]Update failed: {ex.Message}[/]");
             }
