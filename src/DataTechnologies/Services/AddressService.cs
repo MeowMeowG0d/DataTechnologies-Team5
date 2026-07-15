@@ -35,7 +35,9 @@ public class AddressService
         ValidateField(postcode, InputWhitelistValidator.IsValidPostcode, "Postcode is verplicht.", "Postcode is ongeldig.");
         ValidateField(city, InputWhitelistValidator.IsValidCity, "Stad is verplicht.", "Stad bevat ongeldige tekens.");
         ValidateField(country, InputWhitelistValidator.IsValidCountry, "Land is verplicht.", "Land bevat ongeldige tekens.");
-        ValidateField(type, InputWhitelistValidator.IsValidAddressLine, "Toevoeging is verplicht.", "Toevoeging bevat ongeldige tekens.");
+
+        if (!string.IsNullOrWhiteSpace(type))
+            ValidateField(type, InputWhitelistValidator.IsValidAddressLine, "Toevoeging is verplicht.", "Toevoeging bevat ongeldige tekens.");
 
         var address = new Addresses
         {
