@@ -123,6 +123,17 @@ public static class UserMenu
                         ? ValidationResult.Success()
                         : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
 
+            string confirmPassword;
+            while (true)
+            {
+                confirmPassword = AnsiConsole.Prompt(
+                    new TextPrompt<string>("Confirm password:")
+                        .Secret());
+                if (confirmPassword == password)
+                    break;
+                AnsiConsole.MarkupLine("[red]Passwords do not match. Try again.[/]");
+            }
+
             var user = new User
             {
                 Email = email,

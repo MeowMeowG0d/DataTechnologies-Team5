@@ -152,6 +152,18 @@ async Task MainAsync()
                                 : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
                     AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
 
+                    string confirmPassword;
+                    while (true)
+                    {
+                        confirmPassword = await AnsiConsole.PromptAsync(
+                            new TextPrompt<string>("Confirm password:")
+                                .Secret());
+                        if (confirmPassword == password)
+                            break;
+                        AnsiConsole.MarkupLine("[red]Passwords do not match. Try again.[/]");
+                    }
+                    AnsiConsole.MarkupLine("[green]✔ Passwords match.[/]");
+
                     var user = new User { Email = email, Name = name, PasswordHash = password, EmailVerified = false };
                     var newUserId = userService.AddUser(user);
                     AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
