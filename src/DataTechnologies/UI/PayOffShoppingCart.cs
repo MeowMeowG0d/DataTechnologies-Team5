@@ -2,6 +2,7 @@ using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
 using DataTechnologies.Utils;
+using Npgsql;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -343,28 +344,37 @@ public class PayOffShoppingCart
                     TotalAmount = (float)totalAmount
                 };
 
-                int newOrderId = _orderRepository.Add(order);
-
-                if (card != null)
+                int newOrderId;
+                try
                 {
-                    card.OrderId = newOrderId;
-                    _paymentCardRepository.Add(card);
-                }
+                    newOrderId = _orderRepository.Add(order);
 
-                var orderLines = new List<OrderLine>();
-                if (items != null)
-                {
-                    foreach (var item in items)
+                    if (card != null)
                     {
-                        orderLines.Add(new OrderLine
-                        {
-                            ProductID = item.ProductId,
-                            Quantity = item.Quantity,
-                            UnitPrice = (float)item.Price
-                        });
+                        card.OrderId = newOrderId;
+                        _paymentCardRepository.Add(card);
                     }
+
+                    var orderLines = new List<OrderLine>();
+                    if (items != null)
+                    {
+                        foreach (var item in items)
+                        {
+                            orderLines.Add(new OrderLine
+                            {
+                                ProductID = item.ProductId,
+                                Quantity = item.Quantity,
+                                UnitPrice = (float)item.Price
+                            });
+                        }
+                    }
+                    _orderRepository.AddOrderLines(newOrderId, orderLines);
                 }
-                _orderRepository.AddOrderLines(newOrderId, orderLines);
+                catch (NpgsqlException ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Bestelling kon niet worden opgeslagen: {Markup.Escape(ex.Message)}[/]");
+                    return;
+                }
 
                 var emailProducts = new List<(string ProductName, int Quantity, decimal Price)>();
                 if (items != null)
