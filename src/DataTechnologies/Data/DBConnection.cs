@@ -14,6 +14,9 @@ namespace DataTechnologies.Data
 
         public DBConnection(string database = "team5")
         {
+            if (!InputWhitelistValidator.IsValidDatabaseName(database))
+                throw new ArgumentException("Database name is invalid.", nameof(database));
+
             var host = Environment.GetEnvironmentVariable("POSTGRESQL_HOST");
             var port = Environment.GetEnvironmentVariable("POSTGRESQL_PORT");
             var username = Environment.GetEnvironmentVariable("POSTGRESQL_USERNAME");;
@@ -31,6 +34,9 @@ namespace DataTechnologies.Data
 
         public static void CreateDatabaseIfNotExists(string targetDatabase)
         {
+            if (!InputWhitelistValidator.IsValidDatabaseName(targetDatabase))
+                throw new ArgumentException("Database name is invalid.", nameof(targetDatabase));
+
             var defaultDbConnection = new DBConnection("team5");
             using var connection = defaultDbConnection.GetConnection();
             connection.Open();

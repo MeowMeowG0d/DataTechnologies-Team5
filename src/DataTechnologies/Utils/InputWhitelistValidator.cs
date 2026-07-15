@@ -6,6 +6,7 @@ public static class InputWhitelistValidator
 {
     private const int MaxEmailLength = 254;
     private const int MaxNameLength = 35;
+    private const int MaxDatabaseNameLength = 63;
 
     private static readonly Regex EmailWhitelistRegex = new(
         @"\A[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\z",
@@ -21,6 +22,11 @@ public static class InputWhitelistValidator
 
     private static readonly Regex PasswordWhitelistRegex = new(
         @"\A(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])\S{8,64}\z",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant
+    );
+
+    private static readonly Regex DatabaseNameWhitelistRegex = new(
+        @"\A[A-Za-z_][A-Za-z0-9_]{0,62}\z",
         RegexOptions.Compiled | RegexOptions.CultureInvariant
     );
 
@@ -66,6 +72,20 @@ public static class InputWhitelistValidator
             return false;
 
         return PasswordWhitelistRegex.IsMatch(candidate);
+    }
+
+    public static bool IsValidDatabaseName(string? input)
+    {
+        if (input is null)
+            return false;
+
+        if (IsMissingInput(input))
+            return false;
+
+        if (!TryNormalize(input, out var normalized, MaxDatabaseNameLength))
+            return false;
+
+        return DatabaseNameWhitelistRegex.IsMatch(normalized);
     }
 
     private static bool TryNormalize(string? input, out string normalized, int maxLength)

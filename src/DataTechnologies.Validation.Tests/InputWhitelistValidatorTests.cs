@@ -139,4 +139,48 @@ public class InputWhitelistValidatorTests
     {
         Assert.False(InputWhitelistValidator.IsValidPassword(input));
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void IsValidDatabaseName_MissingInput_ReturnsFalse(string? input)
+    {
+        Assert.False(InputWhitelistValidator.IsValidDatabaseName(input));
+    }
+
+    [Theory]
+    [InlineData("team5")]
+    [InlineData("Team_5")]
+    [InlineData("_private")]
+    [InlineData("a")]
+    public void IsValidDatabaseName_ValidName_ReturnsTrue(string input)
+    {
+        Assert.True(InputWhitelistValidator.IsValidDatabaseName(input));
+    }
+
+    [Theory]
+    [InlineData("team5; DROP DATABASE team5;--")]
+    [InlineData("team5\" OR \"1\"=\"1")]
+    [InlineData("5team")]
+    [InlineData("team-5")]
+    [InlineData("team 5")]
+    public void IsValidDatabaseName_DisallowedCharacters_ReturnsFalse(string input)
+    {
+        Assert.False(InputWhitelistValidator.IsValidDatabaseName(input));
+    }
+
+    [Fact]
+    public void IsValidDatabaseName_OverMaxLength_ReturnsFalse()
+    {
+        var input = new string('a', 64);
+        Assert.False(InputWhitelistValidator.IsValidDatabaseName(input));
+    }
+
+    [Fact]
+    public void IsValidDatabaseName_AtMaxLength_ReturnsTrue()
+    {
+        var input = new string('a', 63);
+        Assert.True(InputWhitelistValidator.IsValidDatabaseName(input));
+    }
 }
