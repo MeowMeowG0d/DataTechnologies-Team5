@@ -145,11 +145,11 @@ async Task MainAsync()
                     AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
 
                     var password = await AnsiConsole.PromptAsync(
-                        new TextPrompt<string>("Enter password (min. 8 characters):")
+                        new TextPrompt<string>("Enter password:")
                             .Secret()
                             .Validate(p => InputWhitelistValidator.IsValidPassword(p)
                                 ? ValidationResult.Success()
-                                : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
+                                : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
                     AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
 
                     string confirmPassword;

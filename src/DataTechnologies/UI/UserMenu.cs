@@ -62,12 +62,12 @@ public static class UserMenu
         AnsiConsole.MarkupLine("[green]Account found. You can now set a new password.[/]");
 
         var newPassword = AnsiConsole.Prompt(
-            new TextPrompt<string>("Enter new password (min. 8 characters):")
+            new TextPrompt<string>("Enter new password:")
                 .PromptStyle("red")
                 .Secret()
                 .Validate(p => InputWhitelistValidator.IsValidPassword(p)
                     ? ValidationResult.Success()
-                    : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
+                    : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
 
         var confirmPassword = AnsiConsole.Prompt(
             new TextPrompt<string>("Confirm new password:")
@@ -121,7 +121,7 @@ public static class UserMenu
                     .Secret()
                     .Validate(p => InputWhitelistValidator.IsValidPassword(p)
                         ? ValidationResult.Success()
-                        : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
+                        : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
 
             string confirmPassword;
             while (true)
@@ -221,7 +221,7 @@ public static class UserMenu
                     .AllowEmpty()
                     .Validate(p => p.Length == 0 || InputWhitelistValidator.IsValidPassword(p)
                         ? ValidationResult.Success()
-                        : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
+                        : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
 
             var updatedUser = new User
             {

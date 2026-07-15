@@ -4,6 +4,8 @@ namespace DataTechnologies.Utils;
 
 public static class InputWhitelistValidator
 {
+    public const string PasswordRequirementsMessage = "Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one digit and one special character, without spaces.";
+
     private const int MaxEmailLength = 254;
     private const int MaxNameLength = 35;
     private const int MaxDatabaseNameLength = 63;
