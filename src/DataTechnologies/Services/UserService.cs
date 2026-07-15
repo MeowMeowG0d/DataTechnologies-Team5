@@ -97,7 +97,15 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
             user.PasswordHash = passwordHasher.HashPassword(user.PasswordHash);
         }
 
-        return userRepository.Update(user);
+        try
+        {
+            return userRepository.Update(user);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            // Same race as AddUser: the GetByEmail check above can go stale before this update lands.
+            throw new InvalidOperationException("Another user with this email already exists.", ex);
+        }
     }
 
     public bool ResetPassword(string email, string newPassword)
