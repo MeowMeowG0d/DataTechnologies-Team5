@@ -130,44 +130,39 @@ async Task MainAsync()
                     var services = AppServices.Create(demoDatabaseName);
                     var userService = services.UserService;
 
-                    string email = string.Empty;
-                    do
-                    {
-                        email = await AnsiConsole.AskAsync<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                            AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
-                        else
-                        {
-                            AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
-                            break;
-                        }
-                    } while (true);
+                    var email = await AnsiConsole.PromptAsync(
+                        new TextPrompt<string>("Enter email (e.g., name@domain.com):")
+                            .Validate(e => InputWhitelistValidator.IsValidEmail(e)
+                                ? ValidationResult.Success()
+                                : ValidationResult.Error("[red]Invalid email format.[/]")));
+                    AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
 
-                    string name;
-                    do
-                    {
-                        name = await AnsiConsole.AskAsync<string>("Enter name:");
-                        if (string.IsNullOrWhiteSpace(name))
-                            AnsiConsole.MarkupLine("[red]Name cannot be empty.[/]");
-                        else
-                        {
-                            AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
-                            break;
-                        }
-                    } while (true);
+                    var name = await AnsiConsole.PromptAsync(
+                        new TextPrompt<string>("Enter name:")
+                            .Validate(n => InputWhitelistValidator.IsValidName(n)
+                                ? ValidationResult.Success()
+                                : ValidationResult.Error("[red]Invalid name format.[/]")));
+                    AnsiConsole.MarkupLine("[green]✔ Name is valid.[/]");
 
-                    string password;
-                    do
+                    var password = await AnsiConsole.PromptAsync(
+                        new TextPrompt<string>("Enter password:")
+                            .Secret()
+                            .Validate(p => InputWhitelistValidator.IsValidPassword(p)
+                                ? ValidationResult.Success()
+                                : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
+                    AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+
+                    string confirmPassword;
+                    while (true)
                     {
-                        password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").Secret());
-                        if (password.Length < 8)
-                            AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
-                        else
-                        {
-                            AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
+                        confirmPassword = await AnsiConsole.PromptAsync(
+                            new TextPrompt<string>("Confirm password:")
+                                .Secret());
+                        if (confirmPassword == password)
                             break;
-                        }
-                    } while (true);
+                        AnsiConsole.MarkupLine("[red]Passwords do not match. Try again.[/]");
+                    }
+                    AnsiConsole.MarkupLine("[green]✔ Passwords match.[/]");
 
                     var user = new User { Email = email, Name = name, PasswordHash = password, EmailVerified = false };
                     var newUserId = userService.AddUser(user);

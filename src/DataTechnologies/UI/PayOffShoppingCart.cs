@@ -1,6 +1,8 @@
 using DataTechnologies.Models;
 using DataTechnologies.Repositories;
 using DataTechnologies.Services;
+using DataTechnologies.Utils;
+using Npgsql;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -44,11 +46,11 @@ public class PayOffShoppingCart
             if (existingAddress != null)
             {
                 AnsiConsole.MarkupLine("[green]We hebben al een adres voor je gevonden:[/]");
-                AnsiConsole.MarkupLine($"[grey]Straat:[/] {existingAddress.Street} {existingAddress.Number}");
-                AnsiConsole.MarkupLine($"[grey]Postcode:[/] {existingAddress.Postcode}");
-                AnsiConsole.MarkupLine($"[grey]Stad:[/] {existingAddress.city}");
-                AnsiConsole.MarkupLine($"[grey]Land:[/] {existingAddress.Country}");
-                AnsiConsole.MarkupLine($"[grey]Toevoeging:[/] {existingAddress.Type}");
+                AnsiConsole.MarkupLine($"[grey]Straat:[/] {Markup.Escape(existingAddress.Street)} {Markup.Escape(existingAddress.Number)}");
+                AnsiConsole.MarkupLine($"[grey]Postcode:[/] {Markup.Escape(existingAddress.Postcode)}");
+                AnsiConsole.MarkupLine($"[grey]Stad:[/] {Markup.Escape(existingAddress.city)}");
+                AnsiConsole.MarkupLine($"[grey]Land:[/] {Markup.Escape(existingAddress.Country)}");
+                AnsiConsole.MarkupLine($"[grey]Toevoeging:[/] {Markup.Escape(existingAddress.Type)}");
 
                 var useExisting = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
@@ -71,7 +73,10 @@ public class PayOffShoppingCart
                 address = AnsiConsole.Ask<string>("Voer je adres in:");
                 if (string.IsNullOrWhiteSpace(address))
                     AnsiConsole.MarkupLine("[red]Adres is verplicht.[/]");
-            } while (string.IsNullOrWhiteSpace(address));
+                else if (!InputWhitelistValidator.IsValidAddressLine(address))
+                    AnsiConsole.MarkupLine("[red]Ongeldig adres. Gebruik alleen letters, cijfers en .,'- tekens.[/]");
+                else break;
+            } while (true);
 
             string number;
             do
@@ -79,7 +84,10 @@ public class PayOffShoppingCart
                 number = AnsiConsole.Ask<string>("Voer je huisnummer in:");
                 if (string.IsNullOrWhiteSpace(number))
                     AnsiConsole.MarkupLine("[red]Huisnummer is verplicht.[/]");
-            } while (string.IsNullOrWhiteSpace(number));
+                else if (!InputWhitelistValidator.IsValidHouseNumber(number))
+                    AnsiConsole.MarkupLine("[red]Ongeldig huisnummer.[/]");
+                else break;
+            } while (true);
 
             string postcode;
             do
@@ -87,7 +95,7 @@ public class PayOffShoppingCart
                 postcode = AnsiConsole.Ask<string>("Voer je postcode in:");
                 if (string.IsNullOrWhiteSpace(postcode))
                     AnsiConsole.MarkupLine("[red]Postcode is verplicht.[/]");
-                else if (!System.Text.RegularExpressions.Regex.IsMatch(postcode, @"^\d{4}\s?[A-Za-z]{2}$"))
+                else if (!InputWhitelistValidator.IsValidPostcode(postcode))
                     AnsiConsole.MarkupLine("[red]Ongeldige postcode. Gebruik het formaat 1234 AB.[/]");
                 else break;
             } while (true);
@@ -98,8 +106,8 @@ public class PayOffShoppingCart
                 city = AnsiConsole.Ask<string>("Voer je stad in:");
                 if (string.IsNullOrWhiteSpace(city))
                     AnsiConsole.MarkupLine("[red]Stad is verplicht.[/]");
-                else if (!System.Text.RegularExpressions.Regex.IsMatch(city, @"^[A-Za-z\s\-]+$"))
-                    AnsiConsole.MarkupLine("[red]Ongeldige plaatsnaam. Gebruik alleen letters.[/]");
+                else if (!InputWhitelistValidator.IsValidCity(city))
+                    AnsiConsole.MarkupLine("[red]Ongeldige plaatsnaam.[/]");
                 else break;
             } while (true);
 
@@ -109,7 +117,10 @@ public class PayOffShoppingCart
                 country = AnsiConsole.Ask<string>("Voer je land in:");
                 if (string.IsNullOrWhiteSpace(country))
                     AnsiConsole.MarkupLine("[red]Land is verplicht.[/]");
-            } while (string.IsNullOrWhiteSpace(country));
+                else if (!InputWhitelistValidator.IsValidCountry(country))
+                    AnsiConsole.MarkupLine("[red]Ongeldig land.[/]");
+                else break;
+            } while (true);
 
             string type;
             do
@@ -117,7 +128,10 @@ public class PayOffShoppingCart
                 type = AnsiConsole.Ask<string>("Voer je toevoeging in (appartement, rijtjeshuis):");
                 if (string.IsNullOrWhiteSpace(type))
                     AnsiConsole.MarkupLine("[red]Toevoeging is verplicht.[/]");
-            } while (string.IsNullOrWhiteSpace(type));
+                else if (!InputWhitelistValidator.IsValidAddressLine(type))
+                    AnsiConsole.MarkupLine("[red]Ongeldige toevoeging.[/]");
+                else break;
+            } while (true);
 
             _addressService.SaveAddress(UserID, address, number, postcode, city, country, type);
             var newAddress = _addressService.GetAddressByUserId(UserID);
@@ -129,11 +143,11 @@ public class PayOffShoppingCart
             }
 
             AnsiConsole.MarkupLine("[green]Adres opgeslagen![/]");
-            AnsiConsole.MarkupLine($"[grey]Straat:[/] {address} {number}");
-            AnsiConsole.MarkupLine($"[grey]Postcode:[/] {postcode.ToUpper(CultureInfo.InvariantCulture)}");
-            AnsiConsole.MarkupLine($"[grey]Stad:[/] {city}");
-            AnsiConsole.MarkupLine($"[grey]Land:[/] {country}");
-            AnsiConsole.MarkupLine($"[grey]Toevoeging:[/] {type}");
+            AnsiConsole.MarkupLine($"[grey]Straat:[/] {Markup.Escape(address)} {Markup.Escape(number)}");
+            AnsiConsole.MarkupLine($"[grey]Postcode:[/] {Markup.Escape(postcode.ToUpper(CultureInfo.InvariantCulture))}");
+            AnsiConsole.MarkupLine($"[grey]Stad:[/] {Markup.Escape(city)}");
+            AnsiConsole.MarkupLine($"[grey]Land:[/] {Markup.Escape(country)}");
+            AnsiConsole.MarkupLine($"[grey]Toevoeging:[/] {Markup.Escape(type)}");
 
             PaymentDetails(UserID, Name, EmailAddress, newAddress, totalAmount);
         }
@@ -162,6 +176,8 @@ public class PayOffShoppingCart
                     {
                         if (string.IsNullOrWhiteSpace(value))
                             return ValidationResult.Error("[red]Naam op de kaart is verplicht.[/]");
+                        if (!InputWhitelistValidator.IsValidName(value))
+                            return ValidationResult.Error("[red]Ongeldige naam op de kaart.[/]");
                         return ValidationResult.Success();
                     }));
 
@@ -180,9 +196,18 @@ public class PayOffShoppingCart
                 new TextPrompt<string>("Vervaldatum (MM/JJ):")
                     .Validate(value =>
                     {
-                        if (System.Text.RegularExpressions.Regex.IsMatch(value, @"^(0[1-9]|1[0-2])\/\d{2}$"))
-                            return ValidationResult.Success();
-                        return ValidationResult.Error("[red]Gebruik het formaat MM/JJ.[/]");
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^(0[1-9]|1[0-2])\/\d{2}$"))
+                            return ValidationResult.Error("[red]Gebruik het formaat MM/JJ.[/]");
+
+                        var parts = value.Split('/');
+                        int month = int.Parse(parts[0], CultureInfo.InvariantCulture);
+                        int year = 2000 + int.Parse(parts[1], CultureInfo.InvariantCulture);
+                        var lastValidDay = new DateTime(year, month, 1).AddMonths(1).AddDays(-1);
+
+                        if (lastValidDay < DateTime.Today)
+                            return ValidationResult.Error("[red]Deze kaart is verlopen.[/]");
+
+                        return ValidationResult.Success();
                     }));
 
             // CVV wordt wel gevraagd maar bewust NOOIT opgeslagen (PCI-DSS).
@@ -225,10 +250,10 @@ public class PayOffShoppingCart
 
             AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
             AnsiConsole.MarkupLine("[grey]Leveringsadres:[/]");
-            AnsiConsole.MarkupLine($"  {Address.Street} {Address.Number}");
-            AnsiConsole.MarkupLine($"  {Address.Postcode.ToUpper(CultureInfo.InvariantCulture)}  {Address.city}");
-            AnsiConsole.MarkupLine($"  {Address.Country}");
-            AnsiConsole.MarkupLine($"  {Address.Type}");
+            AnsiConsole.MarkupLine($"  {Markup.Escape(Address.Street)} {Markup.Escape(Address.Number)}");
+            AnsiConsole.MarkupLine($"  {Markup.Escape(Address.Postcode.ToUpper(CultureInfo.InvariantCulture))}  {Markup.Escape(Address.city)}");
+            AnsiConsole.MarkupLine($"  {Markup.Escape(Address.Country)}");
+            AnsiConsole.MarkupLine($"  {Markup.Escape(Address.Type)}");
 
             AnsiConsole.MarkupLine("[yellow]───────────────────────────────────[/]");
             AnsiConsole.MarkupLine($"[grey]Betaalmethode:[/] {PaymentMethod}");
@@ -319,28 +344,37 @@ public class PayOffShoppingCart
                     TotalAmount = (float)totalAmount
                 };
 
-                int newOrderId = _orderRepository.Add(order);
-
-                if (card != null)
+                int newOrderId;
+                try
                 {
-                    card.OrderId = newOrderId;
-                    _paymentCardRepository.Add(card);
-                }
+                    newOrderId = _orderRepository.Add(order);
 
-                var orderLines = new List<OrderLine>();
-                if (items != null)
-                {
-                    foreach (var item in items)
+                    if (card != null)
                     {
-                        orderLines.Add(new OrderLine
-                        {
-                            ProductID = item.ProductId,
-                            Quantity = item.Quantity,
-                            UnitPrice = (float)item.Price
-                        });
+                        card.OrderId = newOrderId;
+                        _paymentCardRepository.Add(card);
                     }
+
+                    var orderLines = new List<OrderLine>();
+                    if (items != null)
+                    {
+                        foreach (var item in items)
+                        {
+                            orderLines.Add(new OrderLine
+                            {
+                                ProductID = item.ProductId,
+                                Quantity = item.Quantity,
+                                UnitPrice = (float)item.Price
+                            });
+                        }
+                    }
+                    _orderRepository.AddOrderLines(newOrderId, orderLines);
                 }
-                _orderRepository.AddOrderLines(newOrderId, orderLines);
+                catch (NpgsqlException ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Bestelling kon niet worden opgeslagen: {Markup.Escape(ex.Message)}[/]");
+                    return;
+                }
 
                 var emailProducts = new List<(string ProductName, int Quantity, decimal Price)>();
                 if (items != null)

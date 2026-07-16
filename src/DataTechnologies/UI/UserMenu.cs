@@ -14,31 +14,21 @@ public static class UserMenu
         ArgumentNullException.ThrowIfNull(userService);
         ArgumentNullException.ThrowIfNull(session);
 
-        string email = string.Empty;
-        do
-        {
-            email = AnsiConsole.Ask<string>("Enter email (e.g., name@domain.com):") ?? string.Empty;
-            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
-            else
-            {
-                AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
-                break;
-            }
-        } while (true);
+        var email = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter email (e.g., name@domain.com):")
+                .Validate(e => InputWhitelistValidator.IsValidEmail(e)
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Invalid email format.[/]")));
+        AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
 
-        string password;
-        do
-        {
-            password = AnsiConsole.Prompt(new TextPrompt<string>("Enter password (min. 8 characters):").PromptStyle("red").Secret());
-            if (password.Length < 8)
-                AnsiConsole.MarkupLine("[red]Password must be at least 8 characters long.[/]");
-            else
-            {
-                AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
-                break;
-            }
-        } while (true);
+        var password = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter password (min. 8 characters):")
+                .PromptStyle("red")
+                .Secret()
+                .Validate(p => p.Length >= 8
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Password must be at least 8 characters long.[/]")));
+        AnsiConsole.MarkupLine("[green]✔ Password criteria met.[/]");
 
         if (userService.Authenticate(email, password))
         {
@@ -56,18 +46,12 @@ public static class UserMenu
     {
         ArgumentNullException.ThrowIfNull(userService);
 
-        string email = string.Empty;
-        do
-        {
-            email = AnsiConsole.Ask<string>("Enter your email to reset your password (e.g., name@domain.com):") ?? string.Empty;
-            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                AnsiConsole.MarkupLine("[red]Invalid email format.[/]");
-            else
-            {
-                AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
-                break;
-            }
-        } while (true);
+        var email = AnsiConsole.Prompt(
+            new TextPrompt<string>("Enter your email to reset your password (e.g., name@domain.com):")
+                .Validate(e => InputWhitelistValidator.IsValidEmail(e)
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Invalid email format.[/]")));
+        AnsiConsole.MarkupLine("[green]✔ Email format is correct.[/]");
 
         if (userService.GetUserByEmail(email) == null)
         {
@@ -78,12 +62,12 @@ public static class UserMenu
         AnsiConsole.MarkupLine("[green]Account found. You can now set a new password.[/]");
 
         var newPassword = AnsiConsole.Prompt(
-            new TextPrompt<string>("Enter new password (min. 8 characters):")
+            new TextPrompt<string>("Enter new password:")
                 .PromptStyle("red")
                 .Secret()
                 .Validate(p => InputWhitelistValidator.IsValidPassword(p)
                     ? ValidationResult.Success()
-                    : ValidationResult.Error("[red]Password must be 8-64 chars, with uppercase, lowercase, digit and no spaces.[/]")));
+                    : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
 
         var confirmPassword = AnsiConsole.Prompt(
             new TextPrompt<string>("Confirm new password:")
@@ -122,11 +106,33 @@ public static class UserMenu
 
         if (userOption == MenuOptions.RegisterUser)
         {
-            var email = AnsiConsole.Ask<string>("Enter email:");
-            var name = AnsiConsole.Ask<string>("Enter name:");
+            var email = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter email:")
+                    .Validate(e => InputWhitelistValidator.IsValidEmail(e)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Invalid email format.[/]")));
+            var name = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter name:")
+                    .Validate(n => InputWhitelistValidator.IsValidName(n)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Invalid name format.[/]")));
             var password = AnsiConsole.Prompt(
                 new TextPrompt<string>("Enter password:")
-                    .Secret());
+                    .Secret()
+                    .Validate(p => InputWhitelistValidator.IsValidPassword(p)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
+
+            string confirmPassword;
+            while (true)
+            {
+                confirmPassword = AnsiConsole.Prompt(
+                    new TextPrompt<string>("Confirm password:")
+                        .Secret());
+                if (confirmPassword == password)
+                    break;
+                AnsiConsole.MarkupLine("[red]Passwords do not match. Try again.[/]");
+            }
 
             var user = new User
             {
@@ -136,26 +142,49 @@ public static class UserMenu
                 EmailVerified = false
             };
 
-            var newUserId = userService.AddUser(user);
-            AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
+            try
+            {
+                var newUserId = userService.AddUser(user);
+                AnsiConsole.MarkupLine($"[green]User registered with ID {newUserId}[/]");
+            }
+            catch (ArgumentException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Registration failed: {ex.Message}[/]");
+            }
+            catch (InvalidOperationException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Registration failed: {ex.Message}[/]");
+            }
+
             DisplayUsers(userService.GetAllUsers());
         }
         else if (userOption == MenuOptions.Login)
         {
-            var email = AnsiConsole.Ask<string>("Enter email:");
+            var email = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter email:")
+                    .Validate(e => InputWhitelistValidator.IsValidEmail(e)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Invalid email format.[/]")));
             var password = AnsiConsole.Prompt(
                 new TextPrompt<string>("Enter password:")
                     .PromptStyle("red")
                     .Secret());
 
-            if (userService.Authenticate(email, password))
+            try
             {
-                var user = userService.GetUserByEmail(email);
-                session.Login(user!);
-                AnsiConsole.MarkupLine("[green]Login successful![/]");
+                if (userService.Authenticate(email, password))
+                {
+                    var user = userService.GetUserByEmail(email);
+                    session.Login(user!);
+                    AnsiConsole.MarkupLine("[green]Login successful![/]");
+                }
+                else
+                    AnsiConsole.MarkupLine("[red]Login failed. Invalid email or password.[/]");
             }
-            else
-                AnsiConsole.MarkupLine("[red]Login failed. Invalid email or password.[/]");
+            catch (ArgumentException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Login failed: {ex.Message}[/]");
+            }
         }
         else if (userOption == MenuOptions.ForgotPassword)
         {
@@ -173,13 +202,26 @@ public static class UserMenu
                 return;
             }
 
-            var email = AnsiConsole.Ask<string>($"Enter new email (current: {existingUser.Email}):", existingUser.Email);
-            var name = AnsiConsole.Ask<string>($"Enter new name (current: {existingUser.Name}):", existingUser.Name);
+            var email = AnsiConsole.Prompt(
+                new TextPrompt<string>($"Enter new email (current: {existingUser.Email}):")
+                    .DefaultValue(existingUser.Email)
+                    .Validate(e => InputWhitelistValidator.IsValidEmail(e)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Invalid email format.[/]")));
+            var name = AnsiConsole.Prompt(
+                new TextPrompt<string>($"Enter new name (current: {existingUser.Name}):")
+                    .DefaultValue(existingUser.Name)
+                    .Validate(n => InputWhitelistValidator.IsValidName(n)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Invalid name format.[/]")));
             var password = AnsiConsole.Prompt(
                 new TextPrompt<string>("Enter new password (leave blank to keep current):")
                     .Secret()
                     .PromptStyle("red")
-                    .AllowEmpty());
+                    .AllowEmpty()
+                    .Validate(p => p.Length == 0 || InputWhitelistValidator.IsValidPassword(p)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error($"[red]{InputWhitelistValidator.PasswordRequirementsMessage}[/]")));
 
             var updatedUser = new User
             {
@@ -190,10 +232,21 @@ public static class UserMenu
                 EmailVerified = existingUser.EmailVerified
             };
 
-            if (userService.UpdateUser(updatedUser))
-                AnsiConsole.MarkupLine("[green]User updated successfully![/]");
-            else
-                AnsiConsole.MarkupLine("[red]Failed to update user.[/]");
+            try
+            {
+                if (userService.UpdateUser(updatedUser))
+                    AnsiConsole.MarkupLine("[green]User updated successfully![/]");
+                else
+                    AnsiConsole.MarkupLine("[red]Failed to update user.[/]");
+            }
+            catch (ArgumentException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Update failed: {ex.Message}[/]");
+            }
+            catch (InvalidOperationException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Update failed: {ex.Message}[/]");
+            }
 
             DisplayUsers(userService.GetAllUsers());
         }

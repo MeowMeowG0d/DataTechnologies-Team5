@@ -1,6 +1,7 @@
 using DataTechnologies.Repositories;
 using DataTechnologies.Models;
 using DataTechnologies.Utils;
+using Npgsql;
 
 namespace DataTechnologies.Services;
 
@@ -8,7 +9,7 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 {
     private const string InvalidEmailError = "Email format is invalid.";
     private const string InvalidNameError = "Name format is invalid.";
-    private const string PasswordSyntaxError = "Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one digit and one special character, without spaces.";
+    private const string PasswordSyntaxError = InputWhitelistValidator.PasswordRequirementsMessage;
 
     private static void ValidateEmail(string email)
     {
@@ -55,7 +56,16 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
             throw new InvalidOperationException("A user with this email already exists.");
 
         user.PasswordHash = passwordHasher.HashPassword(user.PasswordHash);
-        return userRepository.Add(user);
+        try
+        {
+            return userRepository.Add(user);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            // Closes the race window between the GetByEmail check above and this insert;
+            // the DB-level unique index on EmailIndex is the actual source of truth.
+            throw new InvalidOperationException("A user with this email already exists.", ex);
+        }
     }
 
     public bool DeleteUser(int userId)
@@ -86,7 +96,16 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
             ValidatePasswordSyntax(user.PasswordHash, "Password cannot be empty.");
             user.PasswordHash = passwordHasher.HashPassword(user.PasswordHash);
         }
-        return userRepository.Update(user);
+
+        try
+        {
+            return userRepository.Update(user);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            // Same race as AddUser: the GetByEmail check above can go stale before this update lands.
+            throw new InvalidOperationException("Another user with this email already exists.", ex);
+        }
     }
 
     public bool ResetPassword(string email, string newPassword)
